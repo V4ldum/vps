@@ -1,0 +1,178 @@
+apiVersion: v1
+kind: ServiceAccount
+
+metadata:
+    name: traefik
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+
+metadata:
+    name: traefik
+
+rules:
+  - apiGroups: [""]
+    resources: [services, secrets, nodes, configmaps]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get]
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses, ingressclasses]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses/status]
+    verbs: [update]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+
+metadata:
+    name: traefik
+
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: traefik
+
+subjects:
+  - kind: ServiceAccount
+    name: traefik
+    namespace: default
+
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+
+metadata:
+    name: traefik
+
+spec:
+    controller: traefik.io/ingress-controller
+
+---
+apiVersion: v1
+kind: Service
+
+metadata:
+    name: traefik
+
+spec:
+    type: LoadBalancer
+    selector:
+        app: traefik
+    ports:
+      - name: web
+        port: 80
+        targetPort: 80
+      - name: websecure
+        port: 443
+        targetPort: 443
+
+---
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+    name: traefik-dynamic
+
+data:
+    dynamic.toml: |
+        [http.middlewares.api-prefix.stripPrefix]
+          prefixes = ["/api"]
+
+        [[tls.certificates]]
+          certFile = "/tls/proxy.crt"
+          keyFile = "/tls/proxy.key"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+    name: traefik
+
+spec:
+    replicas: 1
+    minReadySeconds: 15
+    revisionHistoryLimit: 1
+
+    strategy:
+        rollingUpdate:
+            maxSurge: 1
+            maxUnavailable: 0
+
+    selector:
+        matchLabels:
+            app: traefik
+
+    template:
+        metadata:
+            labels:
+                app: traefik
+
+        spec:
+            serviceAccountName: traefik
+
+            containers:
+              - name: traefik
+                image: traefik:v3
+                imagePullPolicy: Always
+
+                ports:
+                  - name: web
+                    containerPort: 80
+                  - name: websecure
+                    containerPort: 443
+                  - name: ping
+                    containerPort: 8080
+
+                env:
+                  - name: TZ
+                    value: Europe/Paris
+
+                livenessProbe:
+                    httpGet:
+                        path: /ping
+                        port: ping
+                readinessProbe:
+                    httpGet:
+                        path: /ping
+                        port: ping
+
+                args:
+                  # Kubernetes
+                  - --providers.kubernetesingress
+                  - --providers.kubernetesingress.ingressclass=traefik
+                  # Config
+                  - --global.sendAnonymousUsage=false
+                  - --log.level=INFO
+                  - --providers.file.filename=/config/dynamic.toml
+                  - --providers.file.watch=true
+                  - --ping=true
+                  # HTTP(s)
+                  - --entrypoints.web.address=:80
+                  - --entrypoints.web.http.redirections.entrypoint.to=websecure
+                  - --entrypoints.web.http.redirections.entrypoint.scheme=https
+                  - --entrypoints.websecure.address=:443
+
+                volumeMounts:
+                  - name: config
+                    mountPath: /config
+                    readOnly: true
+                  - name: tls
+                    mountPath: /tls
+                    readOnly: true
+
+            volumes:
+              - name: config
+                configMap:
+                    name: traefik-dynamic
+              - name: tls
+                secret:
+                  secretName: tls-certs

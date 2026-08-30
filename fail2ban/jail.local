@@ -1,0 +1,14 @@
+[DEFAULT]
+# Ban duration (1 hour). Use -1 for permanent
+bantime = 1h
+# Window in which failures are counted
+findtime = 10m
+# Number of failures before ban
+maxretry = 5
+# Ignore your own IPs (localhost, Tailscale subnet)
+ignoreip = 127.0.0.1/8 ::1 100.64.0.0/10 fd7a:115c:a1e0::/48
+
+[sshd]
+enabled = true
+port = 2222
+backend = auto
