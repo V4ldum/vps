@@ -178,37 +178,37 @@ echo "Deploying VPS utilities"
 as_user kubectl apply -f kubernetes.yml >/dev/null || exit 1
 
 echo "Deploying finance"
-gh api repos/V4ldum/finance-back/contents/kubernetes.yml?ref=kubernetes -H "$HEADER" \
+gh api repos/V4ldum/finance-back/contents/kubernetes.yml -H "$HEADER" \
     | as_user kubectl apply -f - >/dev/null || exit 1
 
 echo "Deploying manganotif"
-gh api repos/V4ldum/manganotif-back/contents/kubernetes.yml?ref=kubernetes -H "$HEADER" \
+gh api repos/V4ldum/manganotif-back/contents/kubernetes.yml -H "$HEADER" \
     | as_user kubectl apply -f - >/dev/null || exit 1
 
 echo "Deploying thorfinn"
-gh api repos/V4ldum/thorfinn/contents/kubernetes.yml?ref=kubernetes -H "$HEADER" \
+gh api repos/V4ldum/thorfinn/contents/kubernetes.yml -H "$HEADER" \
     | as_user kubectl apply -f - >/dev/null || exit 1
 
 echo "Deploying backoffice"
-gh api repos/V4ldum/backoffice/contents/kubernetes.yml?ref=kubernetes -H "$HEADER" \
+gh api repos/V4ldum/backoffice/contents/kubernetes.yml -H "$HEADER" \
     | as_user kubectl apply -f - >/dev/null || exit 1
 
 echo "Deploying heal"
-gh api repos/V4ldum/heal/contents/kubernetes.yml?ref=kubernetes -H "$HEADER" \
+gh api repos/V4ldum/heal/contents/kubernetes.yml -H "$HEADER" \
     | as_user kubectl apply -f - >/dev/null || exit 1
 
 echo "Deploying shaman"
-gh api repos/V4ldum/is-shaman-good/contents/kubernetes.yml?ref=kubernetes -H "$HEADER" \
+gh api repos/V4ldum/is-shaman-good/contents/kubernetes.yml -H "$HEADER" \
     | as_user kubectl apply -f - >/dev/null || exit 1
 
 echo "Deploying bingo"
-gh api repos/V4ldum/bingo/contents/kubernetes.yml?ref=kubernetes -H "$HEADER" \
+gh api repos/V4ldum/bingo/contents/kubernetes.yml -H "$HEADER" \
     | as_user kubectl apply -f - >/dev/null || exit 1
 
 echo "Deploying portfolio"
-gh api repos/V4ldum/portfolio/contents/kubernetes.yml?ref=kubernetes -H "$HEADER" \
+gh api repos/V4ldum/portfolio/contents/kubernetes.yml -H "$HEADER" \
     | as_user kubectl apply -f - >/dev/null || exit 1
 
 echo "Deploying qe"
-gh api repos/V4ldum/qe-bleeding-edge/contents/kubernetes.yml?ref=kubernetes -H "$HEADER" \
+gh api repos/V4ldum/qe-bleeding-edge/contents/kubernetes.yml -H "$HEADER" \
     | as_user kubectl apply -f - >/dev/null || exit 1
