@@ -29,7 +29,7 @@ DNS=2a00:1098:2c::1
 DNS=2a01:4f9:c010:3f02::1
 # USA
 DNS=2a01:4ff:f0:9876::1
-Domains=~ghcr.io ~github.com ~githubusercontent.com
+Domains=~ghcr.io ~github.com
 DNSSEC=no
 LinkLocalAddressing=no
 IPv6AcceptRA=no
