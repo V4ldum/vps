@@ -43,4 +43,4 @@ UseDNS=no
 EOF
 
 # Restart resolved
-systemctl restart systemd-resolved
+systemctl restart systemd-networkd systemd-resolved

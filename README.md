@@ -1,7 +1,7 @@
 # Step 1
 
 ```bash
-curl https://raw.githubusercontent.com/V4ldum/vps/refs/heads/main/dns.sh | sh
+curl -s https://raw.githubusercontent.com/V4ldum/vps/refs/heads/main/dns.sh | bash
 ```
 
 # Step 2
