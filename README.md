@@ -1,13 +1,19 @@
 # Step 1
 
 ```bash
-git clone https://github.com/V4ldum/vps
-cd vps
-./provision.sh
+curl https://raw.githubusercontent.com/V4ldum/vps/refs/heads/main/dns.sh | sh
 ```
 
 # Step 2
 
 ```bash
-./run-kube.sh
+git clone https://github.com/V4ldum/vps
+cd vps
+./provision.sh
+```
+
+# Step 3
+
+```bash
+./deploy.sh
 ```
