@@ -29,6 +29,7 @@ DNS=2a00:1098:2c::1
 DNS=2a01:4f9:c010:3f02::1
 # USA
 DNS=2a01:4ff:f0:9876::1
+Address=fd00:64::1/128
 Domains=~ghcr.io ~github.com ~githubusercontent.com
 DNSSEC=no
 LinkLocalAddressing=no
@@ -44,3 +45,4 @@ EOF
 
 # Restart resolved
 systemctl restart systemd-networkd systemd-resolved
+resolvectl flush-caches
