@@ -121,7 +121,7 @@ fi
 echo "Setting up Tailscale"
 
 which tailscale &>/dev/null || (curl -fsSL https://tailscale.com/install.sh | sh &>/dev/null)
-tailscale up --ssh --accept-dns=false
+tailscale up --ssh
 echo ">> Don't forget to disable key expiry on the dashboard"
 
 
