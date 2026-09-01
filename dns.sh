@@ -19,9 +19,16 @@ cat > /etc/systemd/network/100-dns64.network <<'EOF'
 Name=dns64
 
 [Network]
+# Germany
+DNS=2a01:4f8:c2c:123f::1
+# Netherland
 DNS=2a00:1098:2b::1
+# UK
 DNS=2a00:1098:2c::1
+# Finland
 DNS=2a01:4f9:c010:3f02::1
+# USA
+DNS=2a01:4ff:f0:9876::1
 Domains=~ghcr.io ~github.com ~githubusercontent.com
 DNSSEC=no
 LinkLocalAddressing=no
