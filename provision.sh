@@ -181,10 +181,10 @@ fi
 # Prepare Kubernetes
 echo "Preparing for Kubernetes install"
 
-if ! which kubesolo &>/dev/null
+if ! which k0s &>/dev/null
 then
     # Uninstall docker from the box
-    # Kubesolo needs docker to be completely removed before installing kubernetes
+    # Kubesolo needed docker to be uninstalled. Idk about k0s but I'll keep it just in case I guess
 
     # List all docker adjacent packages installed
     # dpkg -l | grep -iE 'docker|containerd|runc'
