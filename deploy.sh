@@ -167,7 +167,7 @@ fi
 # Deployments
 echo "Creating deployments dependencies"
 
-mkdir -p db/{finance,manganotif,thorfinn}
+mkdir -p ~/db/{finance,manganotif,thorfinn}
 read -n 1 -srp ">> db directory created. Migrate databases into it, then press any key to continue."
 chown -R 65532:65532 db
 

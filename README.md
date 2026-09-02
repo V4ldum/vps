@@ -7,14 +7,14 @@ curl -s https://raw.githubusercontent.com/V4ldum/vps/refs/heads/main/dns.sh | ba
 # Step 2
 
 ```bash
-git clone https://github.com/V4ldum/vps
-cd vps
-./provision.sh
+cd ~
+git clone https://github.com/V4ldum/vps >/dev/null
+vps/provision.sh
 ```
 
 # Step 3
 
 ```bash
-cd vps
-./deploy.sh
+vps/deploy.sh
+rm -rf vps
 ```
