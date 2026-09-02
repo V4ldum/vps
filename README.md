@@ -15,5 +15,6 @@ cd vps
 # Step 3
 
 ```bash
+cd vps
 ./deploy.sh
 ```
