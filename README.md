@@ -8,7 +8,7 @@ curl -s https://raw.githubusercontent.com/V4ldum/vps/refs/heads/main/dns.sh | ba
 
 ```bash
 cd ~
-git clone https://github.com/V4ldum/vps >/dev/null
+git clone https://github.com/V4ldum/vps &>/dev/null
 vps/provision.sh
 ```
 
