@@ -258,7 +258,7 @@ echo "Installing K0s"
 
 if ! which k0s &>/dev/null
 then
-    curl --proto '=https' --tlsv1.2 -sSf https://get.k0s.sh | sh >/dev/null || exit 1
+    curl --proto '=https' --tlsv1.2 -sS https://get.k0s.sh | sh >/dev/null || exit 1
     k0s install controller --single --start >/dev/null || exit 1
     sleep 30 # Waiting for the cluster to start
 else
@@ -277,7 +277,7 @@ then
     install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
     rm ./kubectl
 
-    k0s config admin > ~/.kube/config
+    cp /var/lib/k0s/pki/admin.conf ~/.kube/config
 else
     echo "> Kubectl is already installed, skipping"
 fi
@@ -300,12 +300,12 @@ then
         || exit 1
     unset SECRET
 
-    for _ in $(seq 1 30)
-    do
-        # Service account might not be ready when this command is run so we loop waiting for it to ready
-        k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$SECRET_NAME"'"}]}' >/dev/null && break
-        sleep 2
-    done
+    # Create default SA if missing
+    if ! k0s kubectl get sa default &>/dev/null
+    then
+        k0s kubectl create sa default >/dev/null
+    fi
+    k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$SECRET_NAME"'"}]}' >/dev/null && break
 fi
 
 # SSL certificates
