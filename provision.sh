@@ -43,6 +43,7 @@ fi
 cd "$(dirname "$0")" || exit 1
 REBOOT_REQUIRED=0
 
+
 # ----------------------
 # Update system
 echo "Updating the system and adding necessary software"
@@ -50,6 +51,37 @@ echo "Updating the system and adding necessary software"
 apt-get update -y &>/dev/null
 apt-get upgrade -y &>/dev/null
 apt-get install -y vim sqlite3 tree curl apt-transport-https ca-certificates gnupg &>/dev/null
+
+
+# ----------------------
+# Setup DNS64 for IPv4 only targets
+echo "Setting up DNS64"
+
+# Create resolved config
+mkdir -p /etc/systemd/resolved.conf.d/
+install_if_changed /etc/systemd/resolved.conf.d/dns64.conf <<'EOF'
+[Resolve]
+# Germany
+DNS=2a01:4f8:c2c:123f::1
+# Netherland
+DNS=2a00:1098:2b::1
+# UK
+DNS=2a00:1098:2c::1
+# Finland
+DNS=2a01:4f9:c010:3f02::1
+# USA
+DNS=2a01:4ff:f0:9876::1
+Domains=~ghcr.io ~github.com ~githubusercontent.com
+EOF
+RESOLVED_CHANGED=$(($? == 0))
+
+# Restart resolved
+if [ "$RESOLVED_CHANGED" -eq 1 ]
+then
+    systemctl restart systemd-resolved
+    resolvectl flush-caches
+    sleep 5
+fi
 
 
 # ----------------------
@@ -94,6 +126,14 @@ then
     exit 1;
 fi
 
+# Restart upgrade timer
+if [ "$UPGRADE_TIMER_CHANGED" -eq 1 ]
+then
+    systemctl daemon-reload
+    systemctl restart apt-daily-upgrade.timer
+    sleep 5
+fi
+
 
 # ----------------------
 # SSH
@@ -113,6 +153,22 @@ then
     echo ">> Error parsing SSH configuration :"
     echo ">> $ERROR"
     exit 1;
+fi
+
+# Restart SSH
+if [ "$SSH_CONFIG_CHANGED" -eq 1 ]
+then
+    systemctl restart ssh
+
+    read -rp "SSH restarted, please confirm SSH works with the new configuration (y/N) "
+    case "$REPLY" in
+        [yY]|[yY][eE][sS]) ;;
+        *) {
+            echo ">> Stopping the script, fix the SSH config and re-run it!";
+            echo ">> Exiting SSH will lock you out of the box";
+            exit 1;
+        } ;;
+    esac
 fi
 
 
@@ -161,6 +217,7 @@ if [ "$FAIL2BAN_CONFIG_CHANGED" -eq 1 ]
 then
     echo "Fail2ban config changed, restarting fail2ban"
     systemctl reload-or-restart fail2ban >/dev/null
+    sleep 5
 fi
 
 
@@ -183,8 +240,7 @@ echo "Preparing for Kubernetes install"
 
 if ! which k0s &>/dev/null
 then
-    # Uninstall docker from the box
-    # Kubesolo needed docker to be uninstalled. Idk about k0s but I'll keep it just in case I guess
+    # Uninstalling docker from the box just in case
 
     # List all docker adjacent packages installed
     # dpkg -l | grep -iE 'docker|containerd|runc'
@@ -204,51 +260,189 @@ then
     rm -f /etc/apt/keyrings/docker.asc /etc/apt/sources.list.d/docker.sources
     apt-get update -y &>/dev/null # Refresh apt cache
     getent group docker >/dev/null && groupdel docker
+
+    # Restarting to finish the cleanup
+    if [ "$REBOOT_REQUIRED" -eq 1 ] || [ -f /var/run/reboot-required ]
+    then
+        echo "A reboot is required, you re-run the script after the reboot"
+        read -rp "Are you ready to reboot now? (y/N) "
+        case "$REPLY" in
+            [yY]|[yY][eE][sS]) reboot ;;
+            *) echo ">> Reboot skipped, don't forget to reboot manually!"; exit 0 ;;
+        esac
+    fi
 else
-    echo "> Kubesolo is already installed, unsafe to delete docker dependencies"
+    echo "> K0s is already installed, unsafe to delete docker dependencies"
 fi
 
 
 # ----------------------
-# Cleanup and restart
+# Cleanup
 
 apt-get autoremove --purge -y &>/dev/null
 apt-get clean -y &>/dev/null
 
-echo "Finished provisioning"
 
-# Restart SSH
-if [ "$SSH_CONFIG_CHANGED" -eq 1 ]
+# ----------------------
+# K0s
+echo "Installing K0s"
+
+if ! which k0s &>/dev/null
 then
-    echo "SSH config changed"
-    systemctl restart ssh
-
-    read -rp "SSH restarted, please confirm SSH works with the new configuration? (y/N) "
-    case "$REPLY" in
-        [yY]|[yY][eE][sS]) ;;
-        *) {
-            echo "Stopping the script, fix the SSH config and reload!";
-            echo "Exiting SSH will lock you out of the box";
-            exit 1;
-        } ;;
-    esac
-fi
-
-if [ "$REBOOT_REQUIRED" -eq 1 ] || [ -f /var/run/reboot-required ]
-then
-    # Reboot if needed
-    read -rp "Reboot required, are you ready to reboot now? (y/N) "
-    case "$REPLY" in
-        [yY]|[yY][eE][sS]) reboot ;;
-        *) echo ">> Reboot skipped, don't forget to reboot manually!" ;;
-    esac
+    curl --proto '=https' --tlsv1.2 -sSf https://get.k0s.sh | sh || exit 1
+    k0s install controller --single --start || exit 1
+    sleep 30 # Waiting for the cluster to start
 else
-    # Restart upgrade timer
-    if [ "$UPGRADE_TIMER_CHANGED" -eq 1 ]
-    then
-        echo "Upgrade timer changed, restarting timer"
-
-        systemctl daemon-reload
-        systemctl restart apt-daily-upgrade.timer
-    fi
+    echo "> K0s is already installed, skipping"
 fi
+
+
+# ----------------------
+# Kubectl
+#echo "Installing Kubectl"
+#
+#if ! which kubectl &>/dev/null
+#then
+#    curl -LOs "https://dl.k8s.io/release/$KUBERNETES_VERSION/bin/linux/amd64/kubectl"
+#    install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+#    rm ./kubectl
+#else
+#    echo "> Kubectl is already installed, skipping"
+#fi
+
+
+# ----------------------
+# Secrets
+
+# GHCR Registry
+SECRET_NAME="ghcr"
+if ! k0s kubectl get secret "$SECRET_NAME" &>/dev/null
+then
+    echo "Creating GHCR registry secret"
+
+    read -resp "Paste the \"GHCR\" token: " SECRET
+    k0s kubectl create secret docker-registry "$SECRET_NAME" \
+        --docker-server=ghcr.io \
+        --docker-username=V4ldum \
+        --docker-password="$SECRET" \
+        || exit 1
+    unset SECRET
+
+    for _ in $(seq 1 30)
+    do
+        # Service account might not be ready when this command is run so we loop waiting for it to ready
+        k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$SECRET_NAME"'"}]}' && break
+        sleep 2
+    done
+fi
+
+# SSL certificates
+SECRET_NAME="tls-certs"
+if ! k0s kubectl get secret "$SECRET_NAME" &>/dev/null
+then
+    ## CRT
+    echo "Paste the \"CRT\" file content:"
+    while IFS= read -rs LINE
+    do
+        printf '%s\n' "$LINE"
+        [ "$LINE" = "-----END CERTIFICATE-----" ] && break
+    done > proxy.crt
+
+    ## KEY
+    echo "Paste the \"KEY\" file content:"
+    while IFS= read -rs LINE
+    do
+        printf '%s\n' "$LINE"
+        [ "$LINE" = "-----END PRIVATE KEY-----" ] && break
+    done > proxy.key
+
+    ## Secret
+    k0s kubectl create secret generic "$SECRET_NAME" --from-file=proxy.crt --from-file=proxy.key || exit 1
+    rm proxy.crt proxy.key
+fi
+
+# Deployment secrets
+echo "Creating deployment secrets"
+
+## MangaNotif
+SECRET_NAME="manganotif-api-secret"
+if ! k0s kubectl get secret "$SECRET_NAME" &>/dev/null; then
+    read -resp "Paste $SECRET_NAME: " SECRET
+    k0s kubectl create secret generic "$SECRET_NAME" --from-literal=MANGANOTIF_API_SECRET="$SECRET" >/dev/null
+    unset SECRET
+fi
+
+## Thorfinn
+SECRET_NAME="thorfinn-discord-api-token"
+if ! k0s kubectl get secret "$SECRET_NAME" &>/dev/null; then
+    read -resp "Paste $SECRET_NAME: " SECRET
+    k0s kubectl create secret generic "$SECRET_NAME" --from-literal=DISCORD_API_TOKEN="$SECRET" >/dev/null
+    unset SECRET
+fi
+
+## Heal
+SECRET_NAME="heal-discord-webhook"
+if ! k0s kubectl get secret "$SECRET_NAME" &>/dev/null; then
+    read -resp "Paste $SECRET_NAME: " SECRET
+    k0s kubectl create secret generic "$SECRET_NAME" --from-literal=WEBHOOK="$SECRET" >/dev/null
+    unset SECRET
+fi
+
+## Backoffice
+SECRET_NAME="backoffice-secret"
+if ! k0s kubectl get secret "$SECRET_NAME" &>/dev/null; then
+    read -resp "Paste $SECRET_NAME: " SECRET
+    k0s kubectl create secret generic "$SECRET_NAME" --from-literal=BACKOFFICE_SECRET="$SECRET" >/dev/null
+    unset SECRET
+fi
+
+
+# ----------------------
+# Deployments
+echo "Creating deployments dependencies"
+
+mkdir -p ~/db/{finance,manganotif,thorfinn}
+read -n 1 -srp ">> db directory created. Migrate databases into it, then press any key to continue."
+chown -R 65532:65532 ~/db
+
+## Deploy
+HEADER="Accept: application/vnd.github.raw"
+
+echo "Deploying VPS utilities"
+k0s kubectl apply -f kubernetes.yml >/dev/null || exit 1
+
+echo "Deploying finance"
+gh api repos/V4ldum/finance-back/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+
+echo "Deploying manganotif"
+gh api repos/V4ldum/manganotif-back/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+
+echo "Deploying thorfinn"
+gh api repos/V4ldum/thorfinn/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+
+echo "Deploying backoffice"
+gh api repos/V4ldum/backoffice/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+
+echo "Deploying heal"
+gh api repos/V4ldum/heal/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+
+echo "Deploying shaman"
+gh api repos/V4ldum/is-shaman-good/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+
+echo "Deploying bingo"
+gh api repos/V4ldum/bingo/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+
+echo "Deploying portfolio"
+gh api repos/V4ldum/portfolio/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+
+echo "Deploying qe"
+gh api repos/V4ldum/qe-bleeding-edge/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
