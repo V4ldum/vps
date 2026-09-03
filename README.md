@@ -8,6 +8,6 @@ curl -fsSL https://raw.githubusercontent.com/V4ldum/vps/refs/heads/main/dns.sh |
 # Step 2
 
 ```bash
-git clone https://github.com/V4ldum/vps
+git clone https://github.com/V4ldum/vps &>/dev/null
 vps/provision.sh
 ```
