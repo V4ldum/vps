@@ -258,8 +258,8 @@ echo "Installing K0s"
 
 if ! which k0s &>/dev/null
 then
-    curl --proto '=https' --tlsv1.2 -sSf https://get.k0s.sh | sh || exit 1
-    k0s install controller --single --start || exit 1
+    curl --proto '=https' --tlsv1.2 -sSf https://get.k0s.sh | sh >/dev/null || exit 1
+    k0s install controller --single --start >/dev/null || exit 1
     sleep 30 # Waiting for the cluster to start
 else
     echo "> K0s is already installed, skipping"
@@ -268,16 +268,19 @@ fi
 
 # ----------------------
 # Kubectl
-#echo "Installing Kubectl"
-#
-#if ! which kubectl &>/dev/null
-#then
-#    curl -LOs "https://dl.k8s.io/release/$KUBERNETES_VERSION/bin/linux/amd64/kubectl"
-#    install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-#    rm ./kubectl
-#else
-#    echo "> Kubectl is already installed, skipping"
-#fi
+echo "Installing Kubectl"
+
+if ! which kubectl &>/dev/null
+then
+    KUBERNETES_VERSION=$(k0s kubectl version | sed -rn 's/Client Version: (.*)/\1/p')
+    curl -LOs "https://dl.k8s.io/release/$KUBERNETES_VERSION/bin/linux/amd64/kubectl"
+    install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    rm ./kubectl
+
+    k0s config admin > ~/.kube/config
+else
+    echo "> Kubectl is already installed, skipping"
+fi
 
 
 # ----------------------
@@ -293,14 +296,14 @@ then
     k0s kubectl create secret docker-registry "$SECRET_NAME" \
         --docker-server=ghcr.io \
         --docker-username=V4ldum \
-        --docker-password="$SECRET" \
+        --docker-password="$SECRET" >/dev/null \
         || exit 1
     unset SECRET
 
     for _ in $(seq 1 30)
     do
         # Service account might not be ready when this command is run so we loop waiting for it to ready
-        k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$SECRET_NAME"'"}]}' && break
+        k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$SECRET_NAME"'"}]}' >/dev/null && break
         sleep 2
     done
 fi
@@ -371,7 +374,7 @@ fi
 echo "Creating deployments dependencies"
 
 mkdir -p ~/db/{finance,manganotif,thorfinn}
-read -n 1 -srp ">> db directory created. Migrate databases into it, then press any key to continue."
+read -n 1 -esrp ">> db directory created. Migrate databases into it, then press any key to continue."
 chown -R 65532:65532 ~/db
 
 ## Deploy
