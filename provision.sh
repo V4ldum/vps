@@ -41,7 +41,6 @@ fi
 
 # cd into the script's directory
 cd "$(dirname "$0")" || exit 1
-REBOOT_REQUIRED=0
 
 
 # ----------------------
@@ -51,37 +50,6 @@ echo "Updating the system and adding necessary software"
 apt-get update -y &>/dev/null
 apt-get upgrade -y &>/dev/null
 apt-get install -y vim sqlite3 tree curl apt-transport-https ca-certificates gnupg &>/dev/null
-
-
-# ----------------------
-# Setup DNS64 for IPv4 only targets
-echo "Setting up DNS64"
-
-# Create resolved config
-mkdir -p /etc/systemd/resolved.conf.d/
-install_if_changed /etc/systemd/resolved.conf.d/dns64.conf <<'EOF'
-[Resolve]
-# Germany
-DNS=2a01:4f8:c2c:123f::1
-# Netherland
-DNS=2a00:1098:2b::1
-# UK
-DNS=2a00:1098:2c::1
-# Finland
-DNS=2a01:4f9:c010:3f02::1
-# USA
-DNS=2a01:4ff:f0:9876::1
-Domains=~ghcr.io ~github.com ~githubusercontent.com
-EOF
-RESOLVED_CHANGED=$(($? == 0))
-
-# Restart resolved
-if [ "$RESOLVED_CHANGED" -eq 1 ]
-then
-    systemctl restart systemd-resolved
-    resolvectl flush-caches
-    sleep 5
-fi
 
 
 # ----------------------
@@ -237,6 +205,7 @@ fi
 # ----------------------
 # Prepare Kubernetes
 echo "Preparing for Kubernetes install"
+REBOOT_REQUIRED=0
 
 if ! which k0s &>/dev/null
 then
