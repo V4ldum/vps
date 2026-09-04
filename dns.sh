@@ -18,6 +18,7 @@ apt-get install -y vim sqlite3 tree curl apt-transport-https ca-certificates gnu
 
 # ----------------------
 # Setup DNS64 for IPv4 only targets
+echo "Setting up DNS64"
 
 # Create resolved config
 mkdir -p /etc/systemd/resolved.conf.d/
@@ -43,5 +44,6 @@ resolvectl flush-caches
 
 # ----------------------
 # Reboot system to apply updates properly
+echo "Initial setup done, rebooting"
 
 reboot
