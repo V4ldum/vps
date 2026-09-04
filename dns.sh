@@ -6,6 +6,16 @@ then
     exit 1;
 fi
 
+
+# ----------------------
+# Update system
+echo "Updating the system and adding necessary software"
+
+apt-get update -y &>/dev/null
+apt-get upgrade -y &>/dev/null
+apt-get install -y vim sqlite3 tree curl apt-transport-https ca-certificates gnupg jq &>/dev/null
+
+
 # ----------------------
 # Setup DNS64 for IPv4 only targets
 
@@ -29,3 +39,9 @@ EOF
 # Restart resolved
 systemctl restart systemd-resolved
 resolvectl flush-caches
+
+
+# ----------------------
+# Reboot system to apply updates properly
+
+reboot
