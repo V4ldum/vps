@@ -259,7 +259,26 @@ echo "Installing K0s"
 if ! which k0s &>/dev/null
 then
     curl --proto '=https' --tlsv1.2 -sS https://get.k0s.sh | sh >/dev/null || exit 1
-    k0s install controller --single --start >/dev/null || exit 1
+
+    NODE_IP=$(ip -brief -json -6 a show scope global | jq -r .[0].addr_info[0].local) || exit 1
+    mkdir -p /etc/k0s
+    cat > /etc/k0s/ipv6.yaml << EOF
+apiVersion: k0s.k0sproject.io/v1beta1
+kind: ClusterConfig
+metadata:
+  name: k0s
+spec:
+  api:
+    address: $NODE_IP
+    sans:
+      - $NODE_IP
+  network:
+    podCIDR: fd00::/108
+    serviceCIDR: fd01::/108
+EOF
+
+    k0s install controller --single -c /etc/k0s/ipv6.yaml --feature-gates="IPv6SingleStack=true" >/dev/null || exit 1
+    k0s start
     sleep 30 # Waiting for the cluster to start
 else
     echo "> K0s is already installed, skipping"
@@ -305,7 +324,7 @@ then
     then
         k0s kubectl create sa default >/dev/null
     fi
-    k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$SECRET_NAME"'"}]}' >/dev/null && break
+    k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$SECRET_NAME"'"}]}' >/dev/null
 fi
 
 # SSL certificates
