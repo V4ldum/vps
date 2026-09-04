@@ -246,17 +246,10 @@ fi
 
 
 # ----------------------
-# Cleanup
-
-apt-get autoremove --purge -y &>/dev/null
-apt-get clean -y &>/dev/null
-
-
-# ----------------------
 # K0s
 echo "Installing K0s"
 
-if ! which k0s &>/dev/null
+if ! k0s status &>/dev/null
 then
     curl --proto '=https' --tlsv1.2 -sS https://get.k0s.sh | sh >/dev/null || exit 1
 
@@ -291,7 +284,7 @@ echo "Installing Kubectl"
 
 if ! which kubectl &>/dev/null
 then
-    KUBERNETES_VERSION=$(k0s kubectl version | sed -rn 's/Client Version: (.*)/\1/p')
+    KUBERNETES_VERSION=$(k0s kubectl version | sed -rn 's/Client Version: (.*)/\1/p' || exit 1)
     curl -LOs "https://dl.k8s.io/release/$KUBERNETES_VERSION/bin/linux/amd64/kubectl"
     install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
     rm ./kubectl
@@ -401,39 +394,56 @@ HEADER="Accept: application/vnd.github.raw"
 
 echo "Deploying VPS utilities"
 k0s kubectl apply -f kubernetes.yml >/dev/null || exit 1
+sleep 5
 
 echo "Deploying finance"
 gh api repos/V4ldum/finance-back/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
 
 echo "Deploying manganotif"
 gh api repos/V4ldum/manganotif-back/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
 
 echo "Deploying thorfinn"
 gh api repos/V4ldum/thorfinn/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
 
 echo "Deploying backoffice"
 gh api repos/V4ldum/backoffice/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
 
 echo "Deploying heal"
 gh api repos/V4ldum/heal/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
 
 echo "Deploying shaman"
 gh api repos/V4ldum/is-shaman-good/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
 
 echo "Deploying bingo"
 gh api repos/V4ldum/bingo/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
 
 echo "Deploying portfolio"
 gh api repos/V4ldum/portfolio/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
 
 echo "Deploying qe"
 gh api repos/V4ldum/qe-bleeding-edge/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
+
+
+# ----------------------
+# Cleanup
+
+apt-get autoremove --purge -y &>/dev/null
+apt-get clean -y &>/dev/null
