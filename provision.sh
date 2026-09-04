@@ -49,7 +49,7 @@ echo "Updating the system and adding necessary software"
 
 apt-get update -y &>/dev/null
 apt-get upgrade -y &>/dev/null
-apt-get install -y vim sqlite3 tree curl apt-transport-https ca-certificates gnupg &>/dev/null
+apt-get install -y vim sqlite3 tree curl apt-transport-https ca-certificates gnupg jq &>/dev/null
 
 
 # ----------------------
