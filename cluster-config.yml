@@ -14,7 +14,7 @@ spec:
             charts:
               - name: metallb
                 chartname: metallb/metallb
-                version: "0.16.1"
+                version: "0.15.3"
                 namespace: metallb-system
 
     api:

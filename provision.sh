@@ -240,13 +240,14 @@ fi
 # K0s
 echo "Installing K0s"
 
+NODE_IP=$(ip -brief -json -6 a show scope global | jq -r .[0].addr_info[0].local) || exit 1
+
 # To read a new version of the config, update the file then:
 # k0s stop && k0s start
 if ! k0s status &>/dev/null
 then
     curl --proto '=https' --tlsv1.2 -sS https://get.k0s.sh | sh >/dev/null || exit 1
 
-    NODE_IP=$(ip -brief -json -6 a show scope global | jq -r .[0].addr_info[0].local) || exit 1
     mkdir -p /etc/k0s
     NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < cluster-config.yml > /etc/k0s/cluster-config.yaml
 
@@ -376,7 +377,11 @@ chown -R 65532:65532 ~/db
 HEADER="Accept: application/vnd.github.raw"
 
 echo "Deploying VPS utilities"
-k0s kubectl apply -f kubernetes.yml >/dev/null || exit 1
+NODE_IP="$NODE_IP" envsubst '${LB_IP}' < metallb.yml \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
+
+k0s kubectl apply -f traefik.yml >/dev/null || exit1
 sleep 5
 
 echo "Deploying finance"
