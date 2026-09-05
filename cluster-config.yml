@@ -1,0 +1,32 @@
+apiVersion: k0s.k0sproject.io/v1beta1
+kind: ClusterConfig
+
+metadata:
+    name: k0s
+
+spec:
+    extensions:
+        helm:
+            repositories:
+              - name: metallb
+                url: https://metallb.github.io/metallb
+
+            charts:
+              - name: metallb
+                chartname: metallb/metallb
+                version: "0.16.1"
+                namespace: metallb-system
+
+    api:
+        address: $NODE_IP
+        sans:
+          - $NODE_IP
+
+    network:
+        podCIDR: fd00::/108
+        serviceCIDR: fd01::/108
+
+    workerProfiles:
+      - name: gc
+        values:
+            imageMaximumGCAge: 168h

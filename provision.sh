@@ -240,28 +240,20 @@ fi
 # K0s
 echo "Installing K0s"
 
+# To read a new version of the config, update the file then:
+# k0s stop && k0s start
 if ! k0s status &>/dev/null
 then
     curl --proto '=https' --tlsv1.2 -sS https://get.k0s.sh | sh >/dev/null || exit 1
 
     NODE_IP=$(ip -brief -json -6 a show scope global | jq -r .[0].addr_info[0].local) || exit 1
     mkdir -p /etc/k0s
-    cat > /etc/k0s/ipv6.yaml << EOF
-apiVersion: k0s.k0sproject.io/v1beta1
-kind: ClusterConfig
-metadata:
-  name: k0s
-spec:
-  api:
-    address: $NODE_IP
-    sans:
-      - $NODE_IP
-  network:
-    podCIDR: fd00::/108
-    serviceCIDR: fd01::/108
-EOF
+    NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < cluster-config.yml > /etc/k0s/cluster-config.yaml
 
-    k0s install controller --single -c /etc/k0s/ipv6.yaml --feature-gates="IPv6SingleStack=true" >/dev/null || exit 1
+    k0s install controller --single \
+        --profile=gc \
+        -c /etc/k0s/cluster-config.yaml \
+        --feature-gates="IPv6SingleStack=true" >/dev/null || exit 1
     k0s start
     sleep 30 # Waiting for the cluster to start
 else
