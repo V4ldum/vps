@@ -257,6 +257,12 @@ then
         --feature-gates="IPv6SingleStack=true" >/dev/null || exit 1
     k0s start
     sleep 30 # Waiting for the cluster to start
+
+    # On VBox :
+    # edit /etc/systemd/system/k0scontroller.service
+    #   ExecStart=[...] --kubelet-extra-args="--node-ip=$NODE_IP"
+    # systemctl daemon-reload
+    # systemctl restart k0scontroller
 else
     echo "> K0s is already installed, skipping"
 fi
@@ -376,55 +382,56 @@ chown -R 65532:65532 ~/db
 ## Deploy
 HEADER="Accept: application/vnd.github.raw"
 
-echo "Deploying VPS utilities"
-NODE_IP="$NODE_IP" envsubst '${LB_IP}' < metallb.yml \
+echo "Deploying MetalLB"
+NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < metallb.yml \
     | k0s kubectl apply -f - >/dev/null || exit 1
 sleep 5
 
+echo "Deploying Traefik"
 k0s kubectl apply -f traefik.yml >/dev/null || exit 1
 sleep 5
 
-echo "Deploying finance"
+echo "Deploying Finance"
 gh api repos/V4ldum/finance-back/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
 sleep 5
 
-echo "Deploying manganotif"
+echo "Deploying MangaNotif"
 gh api repos/V4ldum/manganotif-back/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
 sleep 5
 
-echo "Deploying thorfinn"
+echo "Deploying Thorfinn"
 gh api repos/V4ldum/thorfinn/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
 sleep 5
 
-echo "Deploying backoffice"
+echo "Deploying Backoffice"
 gh api repos/V4ldum/backoffice/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
 sleep 5
 
-echo "Deploying heal"
+echo "Deploying Heal"
 gh api repos/V4ldum/heal/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
 sleep 5
 
-echo "Deploying shaman"
+echo "Deploying Shaman"
 gh api repos/V4ldum/is-shaman-good/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
 sleep 5
 
-echo "Deploying bingo"
+echo "Deploying Bingo"
 gh api repos/V4ldum/bingo/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
 sleep 5
 
-echo "Deploying portfolio"
+echo "Deploying Portfolio"
 gh api repos/V4ldum/portfolio/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
 sleep 5
 
-echo "Deploying qe"
+echo "Deploying QE"
 gh api repos/V4ldum/qe-bleeding-edge/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
 sleep 5

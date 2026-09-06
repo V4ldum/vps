@@ -7,7 +7,7 @@ metadata:
 
 spec:
   addresses:
-    - "$LB_IP/128"
+    - "$NODE_IP"
 
 ---
 apiVersion: metallb.io/v1beta1
