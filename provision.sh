@@ -227,7 +227,7 @@ then
         echo "A reboot is required, you re-run the script after the reboot"
         read -rp "Are you ready to reboot now? (y/N) "
         case "$REPLY" in
-            [yY]|[yY][eE][sS]) reboot ;;
+            [yY]|[yY][eE][sS]) reboot; exit 0 ;;
             *) echo ">> Reboot skipped, don't forget to reboot manually!"; exit 0 ;;
         esac
     fi
@@ -381,7 +381,7 @@ NODE_IP="$NODE_IP" envsubst '${LB_IP}' < metallb.yml \
     | k0s kubectl apply -f - >/dev/null || exit 1
 sleep 5
 
-k0s kubectl apply -f traefik.yml >/dev/null || exit1
+k0s kubectl apply -f traefik.yml >/dev/null || exit 1
 sleep 5
 
 echo "Deploying finance"
