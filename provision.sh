@@ -240,7 +240,7 @@ fi
 # K0s
 echo "Installing K0s"
 
-NODE_IP=$(ip -brief -json -6 a show scope global | jq -r .[0].addr_info[0].local) || exit 1
+NODE_IP=$(ip -brief -json -6 a show scope global | jq -r .[0].addr_info[0].local)
 
 # To read a new version of the config, update the file then:
 # k0s stop && k0s start
@@ -314,6 +314,12 @@ fi
 SECRET_NAME="tls-certs"
 if ! k0s kubectl get secret "$SECRET_NAME" &>/dev/null
 then
+    # Traefik runs in traefik-system. TLS certs also need to be in that namespace
+    if ! k0s kubectl get namespace traefik-system &>/dev/null
+    then
+        k0s kubectl create namespace traefik-system >/dev/null || exit 1
+    fi
+
     ## CRT
     echo "Paste the \"CRT\" file content:"
     while IFS= read -rs LINE
@@ -331,7 +337,7 @@ then
     done > proxy.key
 
     ## Secret
-    k0s kubectl create secret generic "$SECRET_NAME" --from-file=proxy.crt --from-file=proxy.key || exit 1
+    k0s kubectl create secret generic "$SECRET_NAME" -n traefik-system --from-file=proxy.crt --from-file=proxy.key >/dev/null || exit 1
     rm proxy.crt proxy.key
 fi
 
@@ -385,10 +391,6 @@ HEADER="Accept: application/vnd.github.raw"
 echo "Deploying MetalLB"
 NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < metallb.yml \
     | k0s kubectl apply -f - >/dev/null || exit 1
-sleep 5
-
-echo "Deploying Traefik"
-k0s kubectl apply -f traefik.yml >/dev/null || exit 1
 sleep 5
 
 echo "Deploying Finance"

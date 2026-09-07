@@ -5,18 +5,6 @@ metadata:
     name: k0s
 
 spec:
-    extensions:
-        helm:
-            repositories:
-              - name: metallb
-                url: https://metallb.github.io/metallb
-
-            charts:
-              - name: metallb
-                chartname: metallb/metallb
-                version: "0.15.3"
-                namespace: metallb-system
-
     api:
         address: $NODE_IP
         sans:
@@ -30,3 +18,95 @@ spec:
       - name: gc
         values:
             imageMaximumGCAge: 168h
+
+    extensions:
+        helm:
+            repositories:
+              - name: metallb
+                url: https://metallb.github.io/metallb
+              - name: traefik
+                url: https://traefik.github.io/charts
+
+            charts:
+              - name: metallb
+                chartname: metallb/metallb
+                version: "0.15.3"
+                namespace: metallb-system
+                order: 0
+                values: |
+                    speaker:
+                        frr:
+                            enabled: false
+                        memberlist:
+                            enabled: false
+                        livenessProbe:
+                            timeoutSeconds: 5
+                        readinessProbe:
+                            timeoutSeconds: 5
+                    frrk8s:
+                        enabled: false
+
+              - name: traefik
+                chartname: traefik/traefik
+                version: "39.0.1"
+                namespace: traefik-system
+                order: 1
+                values: |
+                    deployment:
+                        minReadySeconds: 15
+                        revisionHistoryLimit: 1
+
+                    updateStrategy:
+                        rollingUpdate:
+                            maxSurge: 1
+                            maxUnavailable: 0
+
+                    ingressClass:
+                        isDefaultClass: false
+
+                    global:
+                        sendAnonymousUsage: false
+
+                    logs:
+                        general:
+                            level: INFO
+
+                    api:
+                      dashboard: false
+
+                    ports:
+                        web:
+                            http:
+                                redirections:
+                                    entryPoint:
+                                        to: websecure
+                                        scheme: https
+                                        permanent: true
+
+                    providers:
+                        kubernetesIngress:
+                            ingressClass: traefik
+                        kubernetesCRD:
+                            enabled: false
+                        file:
+                            enabled: true
+                            content: |
+                                http:
+                                    middlewares:
+                                        api-prefix:
+                                            stripPrefix:
+                                                prefixes:
+                                                  - /api
+                                tls:
+                                    certificates:
+                                      - certFile: /tls/proxy.crt
+                                        keyFile: /tls/proxy.key
+
+                    env:
+                        - name: TZ
+                          value: Europe/Paris
+
+                    volumes:
+                      - name: tls-certs
+                        mountPath: /tls
+                        type: secret
