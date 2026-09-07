@@ -114,22 +114,6 @@ then
     exit 1;
 fi
 
-# Restart SSH
-if [ "$SSH_CONFIG_CHANGED" -eq 1 ]
-then
-    systemctl restart ssh
-
-    read -rp "SSH restarted, please confirm SSH works with the new configuration (y/N) "
-    case "$REPLY" in
-        [yY]|[yY][eE][sS]) ;;
-        *) {
-            echo ">> Stopping the script, fix the SSH config and re-run it!";
-            echo ">> Exiting SSH will lock you out of the box";
-            exit 1;
-        } ;;
-    esac
-fi
-
 
 # ----------------------
 # Tailscale
@@ -151,6 +135,24 @@ ufw allow 2222/tcp >/dev/null || exit 1
 ufw default deny incoming >/dev/null || exit 1
 ufw default allow outgoing >/dev/null || exit 1
 ufw --force enable >/dev/null || exit 1
+
+
+# ----------------------
+# Test SSH
+if [ "$SSH_CONFIG_CHANGED" -eq 1 ]
+then
+    systemctl restart ssh
+
+    read -rp "SSH restarted, please confirm SSH works with the new configuration (y/N) "
+    case "$REPLY" in
+        [yY]|[yY][eE][sS]) ;;
+        *) {
+            echo ">> Stopping the script, fix the SSH config and re-run it!";
+            echo ">> Exiting SSH will lock you out of the box";
+            exit 1;
+        } ;;
+    esac
+fi
 
 
 # ----------------------
@@ -312,7 +314,7 @@ fi
 
 # SSL certificates
 SECRET_NAME="tls-certs"
-if ! k0s kubectl get secret "$SECRET_NAME" &>/dev/null
+if ! k0s kubectl get secret -n traefik-system "$SECRET_NAME" &>/dev/null
 then
     # Traefik runs in traefik-system. TLS certs also need to be in that namespace
     if ! k0s kubectl get namespace traefik-system &>/dev/null
