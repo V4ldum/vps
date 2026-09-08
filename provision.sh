@@ -187,7 +187,7 @@ fi
 echo "Setting up GitHub CLI"
 
 apt-get install -y gh &>/dev/null
-ssh-keygen -F github.com >/dev/null || ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+ssh-keygen -F github.com &>/dev/null || ssh-keyscan -H github.com >> ~/.ssh/known_hosts
 if ! gh auth status &>/dev/null
 then
     echo "Please authenticate with SSH using the \"VPS\" token:"
