@@ -1,0 +1,148 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+    name: dozzle
+    annotations:
+        traefik.ingress.kubernetes.io/router.tls: "true"
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+
+spec:
+    ingressClassName: traefik
+    rules:
+      - host: dozzle.valdum.dev
+        http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                    service:
+                        name: dozzle
+                        port:
+                            name: http-out
+
+---
+apiVersion: v1
+kind: Service
+
+metadata:
+    name: dozzle
+
+spec:
+    type: ClusterIP
+    selector:
+        app: dozzle
+    ports:
+      - name: http-out
+        protocol: TCP
+        port: 80
+        targetPort: http-in
+
+---
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+    name: dozzle
+
+spec:
+    replicas: 1
+    minReadySeconds: 15
+    revisionHistoryLimit: 1
+
+    strategy:
+        rollingUpdate:
+            maxSurge: 1
+            maxUnavailable: 0
+
+    selector:
+        matchLabels:
+            app: dozzle
+
+    template:
+        metadata:
+            labels:
+                app: dozzle
+
+        spec:
+            serviceAccountName: dozzle-sa
+
+            containers:
+              - name: dozzle
+                image: amir20/dozzle:latest
+                imagePullPolicy: IfNotPresent
+
+                ports:
+                  - name: http-in
+                    containerPort: 8080
+
+                env:
+                  - name: TZ
+                    value: Europe/Paris
+                  - name: DOZZLE_MODE
+                    value: k8s
+                  - name: DOZZLE_AUTH_PROVIDER
+                    value: simple
+                  - name: DOZZLE_FILTER
+                    value: label=dozzle.enable
+
+                startupProbe:
+                    httpGet:
+                        path: /
+                        port: http-in
+                livenessProbe:
+                    httpGet:
+                        path: /
+                        port: http-in
+                readinessProbe:
+                    timeoutSeconds: 3
+                    httpGet:
+                        path: /
+                        port: http-in
+
+                volumeMounts:
+                  - name: data
+                    mountPath: /data
+
+            volumes:
+              - name: data
+                hostPath:
+                    path: /root/dozzle
+                    type: Directory
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: dozzle-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: dozzle-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+    verbs: ["get"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+    name: dozzle-binding
+subjects:
+  - kind: ServiceAccount
+    name: dozzle-sa
+    namespace: default
+roleRef:
+    kind: ClusterRole
+    name: dozzle-role
+    apiGroup: rbac.authorization.k8s.io

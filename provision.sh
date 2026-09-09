@@ -395,6 +395,12 @@ NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < metallb.yml \
     | k0s kubectl apply -f - >/dev/null || exit 1
 sleep 5
 
+echo "Deploying Dozzle"
+mkdir ~/dozzle
+read -n 1 -esrp ">> dozzle directory created. Move config files into it, then press any key to continue."
+k0s kubectl apply -f dozzle.yml || exit 1
+sleep 5
+
 echo "Deploying Finance"
 gh api repos/V4ldum/finance-back/contents/kubernetes.yml -H "$HEADER" \
     | k0s kubectl apply -f - >/dev/null || exit 1
