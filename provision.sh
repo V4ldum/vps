@@ -378,6 +378,16 @@ if ! k0s kubectl get secret "$SECRET_NAME" &>/dev/null; then
     unset SECRET
 fi
 
+## Bingo Supabase
+SECRET_NAME="bingo-supabase-secrets"
+if ! k0s kubectl get secret "$SECRET_NAME" &>/dev/null; then
+    read -resp "Paste Bingo Supabase URL: " SUPABASE_URL
+    read -resp "Paste Bingo Supabase Key: " SUPABASE_KEY
+    k0s kubectl create secret generic "$SECRET_NAME" --from-literal=SUPABASE_URL="$SUPABASE_URL" --from-literal=SUPABASE_KEY="$SUPABASE_KEY" >/dev/null
+    unset SUPABASE_URL
+    unset SUPABASE_KEY
+fi
+
 
 # ----------------------
 # Deployments
