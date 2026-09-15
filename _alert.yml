@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: CronJob
+
+metadata:
+    name: hello
+
+spec:
+    schedule: "0 * * * *"
+    concurrencyPolicy: Forbid
+    successfulJobsHistoryLimit: 1
+    failedJobsHistoryLimit: 1
+
+    jobTemplate:
+        spec:
+            template:
+                metadata:
+                    labels:
+                        dozzle: "true"
+
+                spec:
+                    restartPolicy: Never
+
+                    containers:
+                      - name: hello
+                        image: python:3-slim
+                        imagePullPolicy: IfNotPresent
+
+                        command:
+                          - python
+                          - -c
+                          - print("hello")
