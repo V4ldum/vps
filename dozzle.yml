@@ -84,7 +84,7 @@ spec:
                   - name: DOZZLE_AUTH_PROVIDER
                     value: simple
                   - name: DOZZLE_FILTER
-                    value: label=dozzle.enable
+                    value: dozzle=true
 
                 startupProbe:
                     httpGet:
