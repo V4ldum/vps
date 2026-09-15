@@ -147,17 +147,12 @@ metadata:
 
 spec:
     schedule: "*/5 * * * *"
-    timeZone: Europe/Paris
     concurrencyPolicy: Forbid
-    startingDeadlineSeconds: 300
     successfulJobsHistoryLimit: 1
     failedJobsHistoryLimit: 1
 
     jobTemplate:
         spec:
-            backoffLimit: 0
-            activeDeadlineSeconds: 120
-
             template:
                 metadata:
                     labels:
