@@ -28,4 +28,4 @@ spec:
                         command:
                           - python
                           - -c
-                          - print("hello")
+                          - print("WARN hello")
