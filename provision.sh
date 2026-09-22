@@ -242,12 +242,12 @@ fi
 # K0s
 echo "Installing K0s"
 
-NODE_IP=$(ip -brief -json -6 a show scope global | jq -r .[0].addr_info[0].local)
-
 # To read a new version of the config, update the file then:
 # k0s stop && k0s start
 if ! k0s status &>/dev/null
 then
+    NODE_IP=$(ip -brief -json -6 a show scope global | jq -r .[0].addr_info[0].local)
+
     curl --proto '=https' --tlsv1.2 -sS https://get.k0s.sh | sh >/dev/null || exit 1
 
     mkdir -p /etc/k0s
@@ -265,16 +265,6 @@ then
     #   ExecStart=[...] --kubelet-extra-args="--node-ip=$NODE_IP"
     # systemctl daemon-reload
     # systemctl restart k0scontroller
-
-    # Wait for MetalLB CRD to be applied
-    until k0s kubectl get crd ipaddresspools.metallb.io &>/dev/null
-    do
-        sleep 5
-    done
-
-    # MetalLB config
-    NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < metallb.yml \
-        | k0s kubectl apply -f - >/dev/null || exit 1
 
 else
     echo "> K0s is already installed, skipping"
@@ -438,6 +428,13 @@ then
 else
     echo "> Flux is already installed"
 fi
+
+
+# ----------------------
+# MetalLB
+# Needs to be as late as possible to let the controller start
+NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < metallb.yml \
+    | k0s kubectl apply -f - >/dev/null || exit 1
 
 
 # ----------------------

@@ -14,4 +14,3 @@ resources:
 - repositories/qe.yml
 - repositories/shaman.yml
 - repositories/thorfinn.yml
-- repositories.yml
