@@ -1,0 +1,28 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: bingo
+  namespace: flux-system
+spec:
+    interval: 5m0s
+    path: .
+    prune: true
+    targetNamespace: default
+    sourceRef:
+        kind: GitRepository
+        name: bingo
+
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: bingo
+  namespace: flux-system
+spec:
+    interval: 5m0s
+    ref:
+        branch: main
+    url: https://github.com/V4ldum/bingo
+    ignore: |
+        /*
+        !/kubernetes.yml

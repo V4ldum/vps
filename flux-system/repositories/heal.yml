@@ -1,0 +1,28 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: heal
+  namespace: flux-system
+spec:
+    interval: 5m0s
+    path: .
+    prune: true
+    targetNamespace: default
+    sourceRef:
+        kind: GitRepository
+        name: heal
+
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: heal
+  namespace: flux-system
+spec:
+    interval: 5m0s
+    ref:
+        branch: main
+    url: https://github.com/V4ldum/heal
+    ignore: |
+        /*
+        !/kubernetes.yml

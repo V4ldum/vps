@@ -391,6 +391,12 @@ fi
 
 # ----------------------
 # FluxCD
+echo "Creating deployments dependencies"
+
+mkdir -p ~/db/{finance,manganotif,thorfinn}
+read -n 1 -esrp ">> db directory created. Migrate databases into it, then press any key to continue."
+chown -R 65532:65532 ~/db
+
 echo "Installing FluxCD"
 
 if ! flux version &>/dev/null
@@ -408,8 +414,8 @@ then
         --personal \
         --components=source-controller,kustomize-controller >/dev/null || exit 1
 
-    echo "Flux installed, deployments will now start populating from GitOps"
-
+    echo "> Flux installed, deployments will now start populating from GitOps"
+    sleep 10
 else
     echo "> Flux is already installed"
 fi
@@ -417,11 +423,6 @@ fi
 
 # ----------------------
 # Deployments
-echo "Creating deployments dependencies"
-
-mkdir -p ~/db/{finance,manganotif,thorfinn}
-read -n 1 -esrp ">> db directory created. Migrate databases into it, then press any key to continue."
-chown -R 65532:65532 ~/db
 
 ## Deploy
 HEADER="Accept: application/vnd.github.raw"
@@ -435,51 +436,6 @@ echo "Deploying Dozzle"
 mkdir ~/dozzle
 read -n 1 -esrp ">> dozzle directory created. Move config files into it, then press any key to continue."
 k0s kubectl apply -f dozzle.yml || exit 1
-sleep 5
-
-echo "Deploying Finance"
-gh api repos/V4ldum/finance-back/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
-sleep 5
-
-echo "Deploying MangaNotif"
-gh api repos/V4ldum/manganotif-back/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
-sleep 5
-
-echo "Deploying Thorfinn"
-gh api repos/V4ldum/thorfinn/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
-sleep 5
-
-echo "Deploying Backoffice"
-gh api repos/V4ldum/backoffice/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
-sleep 5
-
-echo "Deploying Heal"
-gh api repos/V4ldum/heal/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
-sleep 5
-
-echo "Deploying Shaman"
-gh api repos/V4ldum/is-shaman-good/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
-sleep 5
-
-echo "Deploying Bingo"
-gh api repos/V4ldum/bingo/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
-sleep 5
-
-echo "Deploying Portfolio"
-gh api repos/V4ldum/portfolio/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
-sleep 5
-
-echo "Deploying QE"
-gh api repos/V4ldum/qe-bleeding-edge/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
 sleep 5
 
 
