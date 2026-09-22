@@ -390,6 +390,32 @@ fi
 
 
 # ----------------------
+# FluxCD
+echo "Installing FluxCD"
+
+if ! flux version &>/dev/null
+then
+    curl -s https://fluxcd.io/install.sh | bash >/dev/null || exit 1
+    . <(flux completion bash)
+
+    flux check --pre >/dev/null || exit 1
+
+    gh auth token | flux bootstrap github \
+        --token-auth \
+        --owner=V4ldum \
+        --repository=vps \
+        --branch=main \
+        --personal \
+        --components=source-controller,kustomize-controller >/dev/null || exit 1
+
+    echo "Flux installed, deployments will now start populating from GitOps"
+
+else
+    echo "> Flux is already installed"
+fi
+
+
+# ----------------------
 # Deployments
 echo "Creating deployments dependencies"
 
