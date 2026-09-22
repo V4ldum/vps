@@ -7,6 +7,7 @@ spec:
     interval: 5m0s
     path: .
     prune: true
+    targetNamespace: default
     sourceRef:
         kind: GitRepository
         name: finance
