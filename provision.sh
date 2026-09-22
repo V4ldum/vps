@@ -258,13 +258,24 @@ then
         -c /etc/k0s/cluster-config.yaml \
         --feature-gates="IPv6SingleStack=true" >/dev/null || exit 1
     k0s start
-    sleep 30 # Waiting for the cluster to start
+    sleep 10 # Waiting for the cluster to start
 
     # On VBox :
     # edit /etc/systemd/system/k0scontroller.service
     #   ExecStart=[...] --kubelet-extra-args="--node-ip=$NODE_IP"
     # systemctl daemon-reload
     # systemctl restart k0scontroller
+
+    # Wait for MetalLB CRD to be applied
+    until k0s kubectl get crd ipaddresspools.metallb.io &>/dev/null
+    do
+        sleep 5
+    done
+
+    # MetalLB config
+    NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < metallb.yml \
+        | k0s kubectl apply -f - >/dev/null || exit 1
+
 else
     echo "> K0s is already installed, skipping"
 fi
@@ -390,13 +401,21 @@ fi
 
 
 # ----------------------
-# FluxCD
-echo "Creating deployments dependencies"
+# Directories
+echo "Creating deployments directories"
 
+# Dozzle
+mkdir -p ~/dozzle
+read -n 1 -esrp ">> dozzle directory created. Move config files into it, then press any key to continue."
+
+# Databases
 mkdir -p ~/db/{finance,manganotif,thorfinn}
 read -n 1 -esrp ">> db directory created. Migrate databases into it, then press any key to continue."
 chown -R 65532:65532 ~/db
 
+
+# ----------------------
+# FluxCD
 echo "Installing FluxCD"
 
 if ! flux version &>/dev/null
@@ -419,24 +438,6 @@ then
 else
     echo "> Flux is already installed"
 fi
-
-
-# ----------------------
-# Deployments
-
-## Deploy
-HEADER="Accept: application/vnd.github.raw"
-
-echo "Deploying MetalLB"
-NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < metallb.yml \
-    | k0s kubectl apply -f - >/dev/null || exit 1
-sleep 5
-
-echo "Deploying Dozzle"
-mkdir ~/dozzle
-read -n 1 -esrp ">> dozzle directory created. Move config files into it, then press any key to continue."
-k0s kubectl apply -f dozzle.yml || exit 1
-sleep 5
 
 
 # ----------------------
