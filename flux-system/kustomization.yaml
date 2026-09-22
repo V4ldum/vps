@@ -3,4 +3,12 @@ kind: Kustomization
 resources:
 - gotk-components.yaml
 - gotk-sync.yaml
-- ./repositories
+- repositories/backoffice.yml
+- repositories/bingo.yml
+- repositories/finance.yml
+- repositories/heal.yml
+- repositories/manganotif.yml
+- repositories/portfolio.yml
+- repositories/qe.yml
+- repositories/shaman.yml
+- repositories/thorfinn.yml
