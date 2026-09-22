@@ -20,6 +20,8 @@ metadata:
   namespace: flux-system
 spec:
     interval: 5m0s
+    secretRef:
+        name: flux-system
     ref:
         branch: main
     url: https://github.com/V4ldum/backoffice
