@@ -28,3 +28,15 @@ spec:
     ignore: |
         /*
         !/kubernetes.yml
+
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: finance
+  namespace: flux-system
+spec:
+    interval: 5m0s
+    image: ghcr.io/V4ldum/finance
+    secretRef:
+        name: flux-system
