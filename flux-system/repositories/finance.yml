@@ -20,11 +20,11 @@ metadata:
   namespace: flux-system
 spec:
     interval: 5m0s
-    secretRef:
-        name: flux-system
+    url: https://github.com/V4ldum/finance-back
     ref:
         branch: main
-    url: https://github.com/V4ldum/finance-back
+    secretRef:
+        name: flux-system
     ignore: |
         /*
         !/kubernetes.yml
