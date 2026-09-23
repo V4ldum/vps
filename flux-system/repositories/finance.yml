@@ -37,6 +37,6 @@ metadata:
   namespace: flux-system
 spec:
     interval: 5m0s
-    image: ghcr.io/V4ldum/finance
+    image: ghcr.io/v4ldum/finance
     secretRef:
-        name: flux-system
+        name: ghcr

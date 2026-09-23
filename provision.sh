@@ -183,19 +183,6 @@ fi
 
 
 # ----------------------
-# GitHub
-echo "Setting up GitHub CLI"
-
-apt-get install -y gh &>/dev/null
-ssh-keygen -F github.com &>/dev/null || ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-if ! gh auth status &>/dev/null
-then
-    echo "Please authenticate with SSH using the \"VPS\" token:"
-    gh auth login
-fi
-
-
-# ----------------------
 # Prepare Kubernetes
 echo "Preparing for Kubernetes install"
 REBOOT_REQUIRED=0
@@ -290,28 +277,6 @@ fi
 
 # ----------------------
 # Secrets
-
-# GHCR Registry
-SECRET_NAME="ghcr"
-if ! k0s kubectl get secret "$SECRET_NAME" &>/dev/null
-then
-    echo "Creating GHCR registry secret"
-
-    read -resp "Paste the \"GHCR\" token: " SECRET
-    k0s kubectl create secret docker-registry "$SECRET_NAME" \
-        --docker-server=ghcr.io \
-        --docker-username=V4ldum \
-        --docker-password="$SECRET" >/dev/null \
-        || exit 1
-    unset SECRET
-
-    # Create default SA if missing
-    if ! k0s kubectl get sa default &>/dev/null
-    then
-        k0s kubectl create sa default >/dev/null
-    fi
-    k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$SECRET_NAME"'"}]}' >/dev/null
-fi
 
 # SSL certificates
 SECRET_NAME="tls-certs"
@@ -408,25 +373,66 @@ chown -R 65532:65532 ~/db
 # FluxCD
 echo "Installing FluxCD"
 
-if ! flux version &>/dev/null
+# GitHub PAT
+GHCR_SECRET_NAME="ghcr"
+k0s kubectl get secret "$GHCR_SECRET_NAME" &>/dev/null
+GHCR_SECRET_FOUND=$?
+flux version &>/dev/null
+FLUX_INSTALLED=$?
+
+if [ ! "$GHCR_SECRET_FOUND" ] || [ ! "$FLUX_INSTALLED" ]
 then
-    curl -s https://fluxcd.io/install.sh | bash >/dev/null || exit 1
-    . <(flux completion bash)
+    read -resp "Paste the \"VPS\" token: " SECRET
 
-    flux check --pre >/dev/null || exit 1
+    if ! "$GHCR_SECRET_FOUND"
+    then
+        echo "Creating GHCR registry secret"
 
-    gh auth token | flux bootstrap github \
-        --token-auth \
-        --owner=V4ldum \
-        --repository=vps \
-        --branch=main \
-        --personal \
-        --components=source-controller,kustomize-controller >/dev/null || exit 1
+        k0s kubectl create secret docker-registry "$GHCR_SECRET_NAME" \
+            --docker-server=ghcr.io \
+            --docker-username=V4ldum \
+            --docker-password="$SECRET" >/dev/null \
+            || exit 1
 
-    echo "> Flux installed, deployments will now start populating from GitOps"
-    sleep 10
-else
-    echo "> Flux is already installed"
+        # Create default SA if missing
+        if ! k0s kubectl get sa default &>/dev/null
+        then
+            k0s kubectl create sa default >/dev/null
+        fi
+        k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$SECRET_NAME"'"}]}' >/dev/null
+    fi
+
+    if ! "$FLUX_INSTALLED"
+    then
+        curl -s https://fluxcd.io/install.sh | bash >/dev/null || exit 1
+        . <(flux completion bash)
+
+        flux check --pre >/dev/null || exit 1
+
+        cat $SECRET | flux bootstrap github \
+            --token-auth \
+            --owner=V4ldum \
+            --repository=vps \
+            --branch=main \
+            --personal \
+            --components=source-controller,kustomize-controller,image-reflector-controller,image-automation-controller \
+            >/dev/null || exit 1
+
+        # Need this secret on both `default` and `flux-system`
+        k0s kubectl create secret -n flux-system docker-registry "$GHCR_SECRET_NAME" \
+            --docker-server=ghcr.io \
+            --docker-username=V4ldum \
+            --docker-password="$SECRET" >/dev/null \
+            || exit 1
+
+
+        echo "> Flux installed, deployments will now start populating from GitOps"
+        sleep 10
+    else
+        echo "> Flux is already installed, skipping"
+    fi
+
+    unset SECRET
 fi
 
 
