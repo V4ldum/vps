@@ -238,7 +238,7 @@ then
     curl --proto '=https' --tlsv1.2 -sS https://get.k0s.sh | sh >/dev/null || exit 1
 
     mkdir -p /etc/k0s
-    NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < cluster-config.yml > /etc/k0s/cluster-config.yaml
+    NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < cluster/cluster-config.yml > /etc/k0s/cluster-config.yaml
 
     k0s install controller --single \
         --profile=gc \
@@ -422,7 +422,7 @@ fi
 # ----------------------
 # MetalLB
 # Needs to be as late as possible to let the controller start
-NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < metallb.yml \
+NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < cluster/metallb.yml \
     | k0s kubectl apply -f - >/dev/null || exit 1
 
 
