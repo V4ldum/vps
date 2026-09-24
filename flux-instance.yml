@@ -11,10 +11,15 @@ spec:
   distribution:
     version: "2.x"
     registry: "ghcr.io/fluxcd"
+    artifact: "oci://ghcr.io/controlplaneio-fluxcd/flux-operator-manifests"
   components:
     - source-controller
     - kustomize-controller
   cluster:
     type: kubernetes
     size: small
-    artifact: "oci://ghcr.io/controlplaneio-fluxcd/flux-operator-manifests"
+  sync:
+    kind: GitRepository
+    url: "https://github.com/v4ldum/vps"
+    ref: "refs/heads/main"
+    path: "./"

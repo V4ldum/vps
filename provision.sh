@@ -228,12 +228,12 @@ fi
 # ----------------------
 # K0s
 echo "Installing K0s"
+NODE_IP=$(ip -brief -json -6 a show scope global | jq -r .[0].addr_info[0].local)
 
 # To read a new version of the config, update the file then:
 # k0s stop && k0s start
 if ! k0s status &>/dev/null
 then
-    NODE_IP=$(ip -brief -json -6 a show scope global | jq -r .[0].addr_info[0].local)
 
     curl --proto '=https' --tlsv1.2 -sS https://get.k0s.sh | sh >/dev/null || exit 1
 
@@ -407,16 +407,7 @@ then
         curl -s https://fluxcd.io/install.sh | bash >/dev/null || exit 1
         . <(flux completion bash)
         flux plugin install operator >/dev/null || exit 1
-
-        #flux check --pre >/dev/null || exit 1
-
-        ## Need this secret on both `default` and `flux-system`
-        #k0s kubectl create secret -n flux-system docker-registry "$GHCR_SECRET_NAME" \
-        #    --docker-server=ghcr.io \
-        #    --docker-username=V4ldum \
-        #    --docker-password="$SECRET" >/dev/null \
-        #    || exit 1
-
+        flux operator install -f flux-instance.yml >/dev/null || exit 1
 
         echo "> Flux installed, deployments will now start populating from GitOps"
         sleep 10
