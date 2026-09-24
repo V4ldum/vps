@@ -17,10 +17,4 @@ spec:
   cluster:
     type: kubernetes
     size: small
-  sync:
-    kind: GitRepository
-    url: "https://github.com/V4ldum/vps.git"
-    ref: "refs/heads/main"
-    path: "./"
-    pullSecret: "flux-system"
-    interval: 1m
+    artifact: "oci://ghcr.io/controlplaneio-fluxcd/flux-operator-manifests"
