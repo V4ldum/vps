@@ -1,0 +1,85 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: finance
+  namespace: flux-system
+spec:
+    interval: 5m0s
+    path: .
+    prune: true
+    targetNamespace: default
+    sourceRef:
+        kind: GitRepository
+        name: finance
+
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: finance
+  namespace: flux-system
+spec:
+    interval: 5m0s
+    url: https://github.com/V4ldum/finance-back
+    ref:
+        branch: main
+    secretRef:
+        name: flux-system
+    ignore: |
+        /*
+        !/kubernetes.yml
+
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: finance
+  namespace: flux-system
+spec:
+    interval: 5m0s
+    image: ghcr.io/v4ldum/finance
+    secretRef:
+        name: ghcr
+
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: finance
+  namespace: flux-system
+spec:
+    interval: 5m0s
+    digestReflectionPolicy: Always
+    imageRepositoryRef:
+        name: finance
+    filterTags:
+        pattern: '^latest$'
+    policy:
+        alphabetical:
+            order: asc
+
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageUpdateAutomation
+metadata:
+  name: finance
+  namespace: flux-system
+spec:
+    interval: 5m0s
+    sourceRef:
+        kind: GitRepository
+        name: finance
+    git:
+        checkout:
+            ref:
+                branch: main
+        commit:
+            author:
+                name: fluxcdbot
+                email: fluxcdbot@users.noreply.github.com
+            messageTemplate: "chore: update finance image [skip ci]"
+        push:
+            branch: main
+    update:
+        path: ./
+        strategy: Setters
