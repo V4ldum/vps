@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
 - flux-instance.yml
 - dozzle.yml
+- repositories/finance.yml

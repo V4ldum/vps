@@ -247,6 +247,8 @@ then
     k0s start
     sleep 10 # Waiting for the cluster to start
 
+    kubectl apply -f cluster/traefik-system.yml
+
     # On VBox :
     # edit /etc/systemd/system/k0scontroller.service
     #   ExecStart=[...] --kubelet-extra-args="--node-ip=$NODE_IP"
@@ -276,18 +278,71 @@ fi
 
 
 # ----------------------
+# FluxCD
+echo "Installing FluxCD"
+
+# GitHub PAT
+GHCR_SECRET_NAME="ghcr"
+k0s kubectl get secret "$GHCR_SECRET_NAME" &>/dev/null
+GHCR_SECRET_FOUND=$?
+flux version &>/dev/null
+FLUX_INSTALLED=$?
+
+if [ "$GHCR_SECRET_FOUND" -ne 0 ] || [ "$FLUX_INSTALLED" -ne 0 ]
+then
+    read -resp "Paste the \"VPS\" token: " SECRET
+
+    if [ "$GHCR_SECRET_FOUND" -ne 0 ]
+    then
+        echo "Creating GHCR registry secret"
+
+        k0s kubectl create secret docker-registry "$GHCR_SECRET_NAME" \
+            --docker-server=ghcr.io \
+            --docker-username=V4ldum \
+            --docker-password="$SECRET" >/dev/null \
+            || exit 1
+
+        # Create default SA if missing
+        if ! k0s kubectl get sa default &>/dev/null
+        then
+            k0s kubectl create sa default >/dev/null
+        fi
+        k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$SECRET_NAME"'"}]}' >/dev/null
+    fi
+
+    if [ "$FLUX_INSTALLED" -ne 0 ]
+    then
+        curl -s https://fluxcd.io/install.sh | bash >/dev/null || exit 1
+        . <(flux completion bash)
+        flux plugin install operator >/dev/null || exit 1
+        flux operator install -f flux-instance.yml >/dev/null || exit 1
+
+        # Needed to pull images from GHCR
+        k0s kubectl create secret docker-registry ghcr \
+          --namespace=flux-system \
+          --docker-server=ghcr.io \
+          --docker-username=V4ldum \
+          --docker-password="$SECRET" >/dev/null || exit 1
+
+        echo "> Flux installed, deployments will now start populating"
+        sleep 10
+    else
+        echo "> Flux is already installed, skipping"
+    fi
+
+    unset SECRET
+fi
+
+
+# ----------------------
 # Secrets
 
 # SSL certificates
+echo "Creating TLS files"
+
 SECRET_NAME="tls-certs"
 if ! k0s kubectl get secret -n traefik-system "$SECRET_NAME" &>/dev/null
 then
-    # Traefik runs in traefik-system. TLS certs also need to be in that namespace
-    if ! k0s kubectl get namespace traefik-system &>/dev/null
-    then
-        k0s kubectl create namespace traefik-system >/dev/null || exit 1
-    fi
-
     ## CRT
     echo "Paste the \"CRT\" file content:"
     while IFS= read -rs LINE
@@ -370,58 +425,8 @@ chown -R 65532:65532 ~/db
 
 
 # ----------------------
-# FluxCD
-echo "Installing FluxCD"
-
-# GitHub PAT
-GHCR_SECRET_NAME="ghcr"
-k0s kubectl get secret "$GHCR_SECRET_NAME" &>/dev/null
-GHCR_SECRET_FOUND=$?
-flux version &>/dev/null
-FLUX_INSTALLED=$?
-
-if [ "$GHCR_SECRET_FOUND" -ne 0 ] || [ "$FLUX_INSTALLED" -ne 0 ]
-then
-    read -resp "Paste the \"VPS\" token: " SECRET
-
-    if [ "$GHCR_SECRET_FOUND" -ne 0 ]
-    then
-        echo "Creating GHCR registry secret"
-
-        k0s kubectl create secret docker-registry "$GHCR_SECRET_NAME" \
-            --docker-server=ghcr.io \
-            --docker-username=V4ldum \
-            --docker-password="$SECRET" >/dev/null \
-            || exit 1
-
-        # Create default SA if missing
-        if ! k0s kubectl get sa default &>/dev/null
-        then
-            k0s kubectl create sa default >/dev/null
-        fi
-        k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$SECRET_NAME"'"}]}' >/dev/null
-    fi
-
-    if [ "$FLUX_INSTALLED" -ne 0 ]
-    then
-        curl -s https://fluxcd.io/install.sh | bash >/dev/null || exit 1
-        . <(flux completion bash)
-        flux plugin install operator >/dev/null || exit 1
-        flux operator install -f flux-instance.yml >/dev/null || exit 1
-
-        echo "> Flux installed, deployments will now start populating from GitOps"
-        sleep 10
-    else
-        echo "> Flux is already installed, skipping"
-    fi
-
-    unset SECRET
-fi
-
-
-# ----------------------
 # MetalLB
-# Needs to be as late as possible to let the controller start
+# Needs to be as late as possible to let the controller start completely
 NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < cluster/metallb.yml \
     | k0s kubectl apply -f - >/dev/null || exit 1
 
