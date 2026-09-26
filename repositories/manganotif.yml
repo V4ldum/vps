@@ -40,6 +40,8 @@ spec:
             ignore: |
                 /*
                 !/kubernetes.yml
+            secretRef:
+                name: github
         # Keeps the image up-to-date with the digest from RSIP
       - apiVersion: kustomize.toolkit.fluxcd.io/v1
         kind: Kustomization

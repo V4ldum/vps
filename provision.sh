@@ -324,6 +324,11 @@ then
           --docker-username=V4ldum \
           --docker-password="$SECRET" >/dev/null || exit 1
 
+        # Used to clone private git repositories
+        k0s kubectl create secret generic github -n flux-system \
+          --from-literal=username=V4ldum \
+          --from-literal=password="$SECRET" >/dev/null || exit 1
+
         echo "> Flux installed, deployments will now start populating"
         sleep 10
     else
