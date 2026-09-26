@@ -1,30 +1,59 @@
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
+# Keeps the image digest up-to-date
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
 metadata:
-  name: thorfinn
-  namespace: flux-system
+    name: thorfinn
+    namespace: flux-system
+    annotations:
+        fluxcd.controlplane.io/reconcileEvery: "5m"
 spec:
-    interval: 5m0s
-    path: .
-    prune: true
-    targetNamespace: default
-    sourceRef:
-        kind: GitRepository
-        name: thorfinn
+    type: OCIArtifactTag
+    url: oci://ghcr.io/v4ldum/thorfinn
+    filter:
+        includeTag: "^latest$"
+        limit: 1
+    secretRef:
+        name: ghcr
 
 ---
-apiVersion: source.toolkit.fluxcd.io/v1
-kind: GitRepository
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSet
 metadata:
-  name: thorfinn
-  namespace: flux-system
+    name: thorfinn
+    namespace: flux-system
 spec:
-    interval: 5m0s
-    url: https://github.com/V4ldum/thorfinn
-    ref:
-        branch: main
-    secretRef:
-        name: flux-system
-    ignore: |
-        /*
-        !/kubernetes.yml
+    inputsFrom:
+      - kind: ResourceSetInputProvider
+        name: thorfinn
+    resources:
+        # Keeps the manifest up-to-date
+      - apiVersion: source.toolkit.fluxcd.io/v1
+        kind: GitRepository
+        metadata:
+            name: thorfinn
+            namespace: flux-system
+        spec:
+            interval: 5m
+            url: https://github.com/V4ldum/thorfinn
+            ref:
+                branch: main
+            ignore: |
+                /*
+                !/kubernetes.yml
+        # Keeps the image up-to-date with the digest from RSIP
+      - apiVersion: kustomize.toolkit.fluxcd.io/v1
+        kind: Kustomization
+        metadata:
+            name: thorfinn
+            namespace: flux-system
+        spec:
+            interval: 5m
+            path: ./
+            prune: true
+            targetNamespace: default
+            sourceRef:
+                kind: GitRepository
+                name: thorfinn
+            images:
+              - name: ghcr.io/v4ldum/thorfinn
+                digest: << inputs.digest | quote >>
