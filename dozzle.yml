@@ -90,10 +90,8 @@ spec:
                     value: dozzle=true
 
                 startupProbe:
-                    httpGet:
-                        path: /
-                        port: http-in
-                livenessProbe:
+                    periodSeconds: 1
+                    failureThreshold: 10
                     httpGet:
                         path: /
                         port: http-in
