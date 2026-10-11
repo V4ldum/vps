@@ -247,7 +247,7 @@ then
 
     k0s kubectl apply -f cluster/traefik-system.yml
 
-    if [ "$VM" -ne 0 ]
+    if [ "$VM" -eq 0 ]
     then
         sed -i "/ExecStart=/s/\$/ --kubelet-extra-args=\"--node-ip=$NODE_IP\"/" /etc/systemd/system/k0scontroller.service
         systemctl daemon-reload
@@ -312,7 +312,6 @@ then
         curl -s https://fluxcd.io/install.sh | bash >/dev/null || exit 1
         . <(flux completion bash)
         flux plugin install operator >/dev/null || exit 1
-        flux operator install -f flux-instance.yml >/dev/null || exit 1
 
         # Needed to pull images from GHCR
         k0s kubectl create secret docker-registry ghcr \
@@ -325,6 +324,9 @@ then
         k0s kubectl create secret generic github -n flux-system \
           --from-literal=username=V4ldum \
           --from-literal=password="$SECRET" >/dev/null || exit 1
+
+        flux operator install -f flux-instance.yml >/dev/null || exit 1
+
 
         echo "> Flux installed, deployments will now start populating"
     else
