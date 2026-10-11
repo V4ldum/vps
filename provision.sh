@@ -42,143 +42,141 @@ fi
 # cd into the script's directory
 cd "$(dirname "$0")" || exit 1
 
+# Test VM has an ip starting with 192 (Class C)
+ip -brief -json -4 a show scope global | jq -r .[0].addr_info[0].local | cut -d. -f1 | grep 192 &>/dev/null
+VM=$(echo $?)
 
-# ----------------------
-# Unattended Updates
-echo "Setting up unattended updates"
-
-# Security updates are already applied on Ubuntu Server
-# (Hetzner actually enables all updates)
-
-# Enable auto-reboot
-install_if_changed /etc/apt/apt.conf.d/52unattended-updates-override <<'EOF'
-Unattended-Upgrade::Automatic-Reboot "true";
-Unattended-Upgrade::Automatic-Reboot-Time "02:00";
-Unattended-Upgrade::Automatic-Reboot-WithUsers "false";
-EOF
-
-# Confirm auto-reboot
-if ! ERROR=$(apt-config dump 2>&1 >/dev/null)
+# We skip some configs on the test VM to simplify testing (no firewall, no fail2ban, no SSH hardening...)
+if [ "$VM" -ne 0 ]
 then
-    echo ">> Error parsing auto-reboot configuration :"
-    echo ">> $ERROR"
-    exit 1;
-fi
+    # ----------------------
+    # Unattended Updates
+    echo "Setting up unattended updates"
 
-# Change upgrade timer to weekly
-NAME="apt-daily-upgrade.timer"
-install_if_changed /etc/systemd/system/$NAME.d/override.conf <<'EOF'
-[Timer]
-OnCalendar=
-OnCalendar=Tue 01:00
-RandomizedDelaySec=30min
-Persistent=true
-EOF
-UPGRADE_TIMER_CHANGED=$(($? == 0))
+    # Security updates are already applied on Ubuntu Server
+    # (Hetzner actually enables all updates)
 
-# Confirm upgrade timer
-ERROR=$(systemd-analyze verify "$NAME" 2>&1 | grep "$NAME")
-if [ -n "$ERROR" ]
-then
-    echo ">> Error parsing upgrade timer :"
-    echo ">> $ERROR"
-    exit 1;
-fi
+    # Enable auto-reboot
+    install_if_changed /etc/apt/apt.conf.d/52unattended-updates-override <<'EOF'
+    Unattended-Upgrade::Automatic-Reboot "true";
+    Unattended-Upgrade::Automatic-Reboot-Time "02:00";
+    Unattended-Upgrade::Automatic-Reboot-WithUsers "false";
+    EOF
 
-# Restart upgrade timer
-if [ "$UPGRADE_TIMER_CHANGED" -eq 1 ]
-then
-    systemctl daemon-reload
-    systemctl restart apt-daily-upgrade.timer
-    sleep 5
-fi
+    # Confirm auto-reboot
+    if ! ERROR=$(apt-config dump 2>&1 >/dev/null)
+    then
+        echo ">> Error parsing auto-reboot configuration :"
+        echo ">> $ERROR"
+        exit 1;
+    fi
 
+    # Change upgrade timer to weekly
+    NAME="apt-daily-upgrade.timer"
+    install_if_changed /etc/systemd/system/$NAME.d/override.conf <<'EOF'
+    [Timer]
+    OnCalendar=
+    OnCalendar=Tue 01:00
+    RandomizedDelaySec=30min
+    Persistent=true
+    EOF
+    UPGRADE_TIMER_CHANGED=$(($? == 0))
 
-# ----------------------
-# SSH
-echo "Hardening up SSH"
+    # Confirm upgrade timer
+    ERROR=$(systemd-analyze verify "$NAME" 2>&1 | grep "$NAME")
+    if [ -n "$ERROR" ]
+    then
+        echo ">> Error parsing upgrade timer :"
+        echo ">> $ERROR"
+        exit 1;
+    fi
 
-install_if_changed /etc/ssh/sshd_config.d/00-hardening.conf <<'EOF'
-PermitRootLogin prohibit-password
-PasswordAuthentication no
-KbdInteractiveAuthentication no
-Port 2222
-EOF
-SSH_CONFIG_CHANGED=$(($? == 0))
-
-# Confirm SSH
-if ! ERROR=$(sshd -t 2>&1)
-then
-    echo ">> Error parsing SSH configuration :"
-    echo ">> $ERROR"
-    exit 1;
-fi
+    # Restart upgrade timer
+    if [ "$UPGRADE_TIMER_CHANGED" -eq 1 ]
+    then
+        systemctl daemon-reload
+        systemctl restart apt-daily-upgrade.timer
+        sleep 5
+    fi
 
 
-# ----------------------
-# Tailscale
-echo "Setting up Tailscale"
+    # ----------------------
+    # Firewall
+    echo "Updating firewall settings"
 
-which tailscale &>/dev/null || (curl -fsSL https://tailscale.com/install.sh | sh &>/dev/null)
-tailscale up --ssh
-echo ">> Don't forget to disable key expiry on the dashboard"
-
-
-# ----------------------
-# Firewall
-echo "Updating firewall settings"
-
-apt-get install -y ufw &>/dev/null
-ufw allow 80/tcp >/dev/null || exit 1
-ufw allow 443/tcp >/dev/null || exit 1
-ufw allow 2222/tcp >/dev/null || exit 1
-ufw default deny incoming >/dev/null || exit 1
-ufw default allow outgoing >/dev/null || exit 1
-ufw --force enable >/dev/null || exit 1
+    apt-get install -y ufw &>/dev/null
+    ufw default deny incoming >/dev/null || exit 1
+    ufw default allow outgoing >/dev/null || exit 1
+    ufw allow 80/tcp >/dev/null || exit 1
+    ufw allow 443/tcp >/dev/null || exit 1
+    ufw allow 2222/tcp >/dev/null || exit 1
+    ufw --force enable >/dev/null || exit 1
 
 
-# ----------------------
-# Test SSH
-if [ "$SSH_CONFIG_CHANGED" -eq 1 ]
-then
-    systemctl restart ssh
+    # ----------------------
+    # SSH
+    echo "Hardening up SSH"
 
-    read -rp "SSH restarted, please confirm SSH works with the new configuration (y/N) "
-    case "$REPLY" in
-        [yY]|[yY][eE][sS]) ;;
-        *) {
-            echo ">> Stopping the script, fix the SSH config and re-run it!";
-            echo ">> Exiting SSH will lock you out of the box";
-            exit 1;
-        } ;;
-    esac
-fi
+    install_if_changed /etc/ssh/sshd_config.d/00-hardening.conf <<'EOF'
+    PermitRootLogin prohibit-password
+    PasswordAuthentication no
+    KbdInteractiveAuthentication no
+    Port 2222
+    EOF
+    SSH_CONFIG_CHANGED=$(($? == 0))
+
+    # Confirm SSH
+    if ! ERROR=$(sshd -t 2>&1)
+    then
+        echo ">> Error parsing SSH configuration :"
+        echo ">> $ERROR"
+        exit 1;
+    fi
 
 
-# ----------------------
-# Fail2ban
-echo "Setting up fail2ban"
+    # ----------------------
+    # Test SSH
+    if [ "$SSH_CONFIG_CHANGED" -eq 1 ]
+    then
+        systemctl restart ssh
 
-apt-get install -y fail2ban &>/dev/null
-systemctl enable fail2ban &>/dev/null
+        read -rp "SSH restarted, please confirm SSH works with the new configuration (y/N) "
+        case "$REPLY" in
+            [yY]|[yY][eE][sS]) ;;
+            *) {
+                echo ">> Stopping the script, fix the SSH config and re-run it!";
+                echo ">> Exiting SSH will lock you out of the box";
+                exit 1;
+            } ;;
+        esac
+    fi
 
-install_if_changed /etc/fail2ban/jail.local < fail2ban/jail.local
-FAIL2BAN_CONFIG_CHANGED=$(($? == 0))
 
-# Confirm fail2ban
-if ! ERROR=$(fail2ban-client -t 2>&1)
-then
-    echo ">> Error parsing fail2ban configuration :"
-    echo ">> $ERROR"
-    exit 1;
-fi
+    # ----------------------
+    # Fail2ban
+    echo "Setting up fail2ban"
 
-# Restart fail2ban
-if [ "$FAIL2BAN_CONFIG_CHANGED" -eq 1 ]
-then
-    echo "Fail2ban config changed, restarting fail2ban"
-    systemctl reload-or-restart fail2ban >/dev/null
-    sleep 5
+    apt-get install -y fail2ban &>/dev/null
+    systemctl enable fail2ban &>/dev/null
+
+    install_if_changed /etc/fail2ban/jail.local < fail2ban/jail.local
+    FAIL2BAN_CONFIG_CHANGED=$(($? == 0))
+
+    # Confirm fail2ban
+    if ! ERROR=$(fail2ban-client -t 2>&1)
+    then
+        echo ">> Error parsing fail2ban configuration :"
+        echo ">> $ERROR"
+        exit 1;
+    fi
+
+    # Restart fail2ban
+    if [ "$FAIL2BAN_CONFIG_CHANGED" -eq 1 ]
+    then
+        echo "Fail2ban config changed, restarting fail2ban"
+        systemctl reload-or-restart fail2ban >/dev/null
+        sleep 5
+    fi
 fi
 
 
@@ -247,13 +245,14 @@ then
     k0s start
     sleep 10 # Waiting for the cluster to start
 
-    kubectl apply -f cluster/traefik-system.yml
+    k0s kubectl apply -f cluster/traefik-system.yml
 
-    # On VBox :
-    # edit /etc/systemd/system/k0scontroller.service
-    #   ExecStart=[...] --kubelet-extra-args="--node-ip=$NODE_IP"
-    # systemctl daemon-reload
-    # systemctl restart k0scontroller
+    if [ "$VM" -ne 0 ]
+    then
+        sed -i "/ExecStart=/s/\$/ --kubelet-extra-args=\"--node-ip=$NODE_IP\"/" /etc/systemd/system/k0scontroller.service
+        systemctl daemon-reload
+        systemctl restart k0scontroller
+    fi
 
 else
     echo "> K0s is already installed, skipping"
@@ -294,8 +293,6 @@ then
 
     if [ "$GHCR_SECRET_FOUND" -ne 0 ]
     then
-        echo "Creating GHCR registry secret"
-
         k0s kubectl create secret docker-registry "$GHCR_SECRET_NAME" \
             --docker-server=ghcr.io \
             --docker-username=V4ldum \
@@ -307,7 +304,7 @@ then
         then
             k0s kubectl create sa default >/dev/null
         fi
-        k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$SECRET_NAME"'"}]}' >/dev/null
+        k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$GHCR_SECRET_NAME"'"}]}' >/dev/null
     fi
 
     if [ "$FLUX_INSTALLED" -ne 0 ]
@@ -330,7 +327,6 @@ then
           --from-literal=password="$SECRET" >/dev/null || exit 1
 
         echo "> Flux installed, deployments will now start populating"
-        sleep 10
     else
         echo "> Flux is already installed, skipping"
     fi

@@ -4,8 +4,9 @@ metadata:
     name: flux
     namespace: flux-system
     annotations:
-        fluxcd.controlplane.io/reconcileEvery: "1h"
-        fluxcd.controlplane.io/reconcileArtifactEvery: "24h"
+        fluxcd.controlplane.io/reconcile: "enabled"
+        fluxcd.controlplane.io/reconcileEvery: "24h"
+        fluxcd.controlplane.io/reconcileArtifactEvery: "168h"
         fluxcd.controlplane.io/reconcileTimeout: "5m"
 spec:
     distribution:
@@ -15,6 +16,7 @@ spec:
     components:
       - source-controller
       - kustomize-controller
+      - notification-controller
     cluster:
         type: kubernetes
         size: small
@@ -24,3 +26,28 @@ spec:
         ref: "refs/heads/main"
         path: "./"
         pullSecret: "ghcr"
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+    name: flux-webhook-receiver
+    namespace: flux-system
+    annotations:
+        traefik.ingress.kubernetes.io/router.tls: "true"
+        traefik.ingress.kubernetes.io/router.entrypoints: websecure
+
+spec:
+    ingressClassName: traefik
+    rules:
+      - host: flux.valdum.dev
+        http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                    service:
+                        name: webhook-receiver
+                        port:
+                            number: 80

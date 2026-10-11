@@ -17,7 +17,7 @@ apt-get install -y vim sqlite3 tree curl apt-transport-https ca-certificates gnu
 
 
 # ----------------------
-# Setup DNS64 for IPv4 only targets
+# Setup DNS64 for IPv6 only targets
 echo "Setting up DNS64"
 
 # Create resolved config
