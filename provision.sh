@@ -58,10 +58,10 @@ then
 
     # Enable auto-reboot
     install_if_changed /etc/apt/apt.conf.d/52unattended-updates-override <<'EOF'
-    Unattended-Upgrade::Automatic-Reboot "true";
-    Unattended-Upgrade::Automatic-Reboot-Time "02:00";
-    Unattended-Upgrade::Automatic-Reboot-WithUsers "false";
-    EOF
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "02:00";
+Unattended-Upgrade::Automatic-Reboot-WithUsers "false";
+EOF
 
     # Confirm auto-reboot
     if ! ERROR=$(apt-config dump 2>&1 >/dev/null)
@@ -74,12 +74,12 @@ then
     # Change upgrade timer to weekly
     NAME="apt-daily-upgrade.timer"
     install_if_changed /etc/systemd/system/$NAME.d/override.conf <<'EOF'
-    [Timer]
-    OnCalendar=
-    OnCalendar=Tue 01:00
-    RandomizedDelaySec=30min
-    Persistent=true
-    EOF
+[Timer]
+OnCalendar=
+OnCalendar=Tue 01:00
+RandomizedDelaySec=30min
+Persistent=true
+EOF
     UPGRADE_TIMER_CHANGED=$(($? == 0))
 
     # Confirm upgrade timer
@@ -118,11 +118,11 @@ then
     echo "Hardening up SSH"
 
     install_if_changed /etc/ssh/sshd_config.d/00-hardening.conf <<'EOF'
-    PermitRootLogin prohibit-password
-    PasswordAuthentication no
-    KbdInteractiveAuthentication no
-    Port 2222
-    EOF
+PermitRootLogin prohibit-password
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+Port 2222
+EOF
     SSH_CONFIG_CHANGED=$(($? == 0))
 
     # Confirm SSH
