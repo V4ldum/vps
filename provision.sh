@@ -227,19 +227,20 @@ fi
 
 # ----------------------
 # K0s
-echo "Installing K0s"
 NODE_IP=$(ip -brief -json -6 a show scope global | jq -r .[0].addr_info[0].local)
 
 # To read a new version of the config, update the file then:
 # k0s stop && k0s start
 if ! k0s status &>/dev/null
 then
-
+    echo "Downloading K0s"
     curl --proto '=https' --tlsv1.2 -sS https://get.k0s.sh | sh >/dev/null || exit 1
 
+    echo "Setting up cluster"
     mkdir -p /etc/k0s
     NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < cluster/cluster-config.yml > /etc/k0s/cluster-config.yaml
 
+    echo "Installing controller"
     k0s install controller --single \
         --profile=gc \
         -c /etc/k0s/cluster-config.yaml \
