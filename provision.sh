@@ -142,6 +142,7 @@ EOF
     then
         echo "> SSH config changed, rebooting to apply everything properly";
         reboot
+        exit 1
     fi
 
 
