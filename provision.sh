@@ -309,7 +309,7 @@ then
         flux plugin install operator >/dev/null || exit 1
 
         # Needed to pull images from GHCR
-        k0s kubectl create namespace flux-system
+        k0s kubectl create namespace flux-system &>/dev/null
         k0s kubectl create secret docker-registry ghcr \
           --namespace=flux-system \
           --docker-server=ghcr.io \
