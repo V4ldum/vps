@@ -284,6 +284,7 @@ FLUX_INSTALLED=$?
 
 if [ "$GHCR_SECRET_FOUND" -ne 0 ] || [ "$FLUX_INSTALLED" -ne 0 ]
 then
+    echo "Creating secrets"
     read -resp "Paste the \"VPS\" token: " SECRET
 
     if [ "$GHCR_SECRET_FOUND" -ne 0 ]
@@ -304,6 +305,7 @@ then
 
     if [ "$FLUX_INSTALLED" -ne 0 ]
     then
+        echo "Installing Flux operator"
         curl -s https://fluxcd.io/install.sh | bash >/dev/null || exit 1
         . <(flux completion bash)
         flux plugin install operator >/dev/null || exit 1
