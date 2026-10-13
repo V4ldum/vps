@@ -6,6 +6,9 @@ then
     exit 1;
 fi
 
+export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
+
 
 # ----------------------
 # Update system
