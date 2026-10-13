@@ -137,20 +137,11 @@ EOF
 
 
     # ----------------------
-    # Test SSH
+    # Apply SSH
     if [ "$SSH_CONFIG_CHANGED" -eq 1 ]
     then
-        systemctl restart ssh
-
-        read -rp "SSH restarted, please confirm SSH works with the new configuration (y/N) "
-        case "$REPLY" in
-            [yY]|[yY][eE][sS]) ;;
-            *) {
-                echo ">> Stopping the script, fix the SSH config and re-run it!";
-                echo ">> Exiting SSH will lock you out of the box";
-                exit 1;
-            } ;;
-        esac
+        echo "> SSH config changed, rebooting to apply everything properly";
+        reboot
     fi
 
 
