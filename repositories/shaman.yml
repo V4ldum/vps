@@ -5,7 +5,9 @@ metadata:
     name: shaman
     namespace: flux-system
     annotations:
-        fluxcd.controlplane.io/reconcileEvery: "5m"
+        fluxcd.controlplane.io/reconcile: "enabled"
+        fluxcd.controlplane.io/reconcileEvery: "24h"
+        fluxcd.controlplane.io/reconcileTimeout: "5m"
 spec:
     type: OCIArtifactTag
     url: oci://ghcr.io/v4ldum/shaman
@@ -21,6 +23,10 @@ kind: ResourceSet
 metadata:
     name: shaman
     namespace: flux-system
+    annotations:
+        fluxcd.controlplane.io/reconcile: "enabled"
+        fluxcd.controlplane.io/reconcileEvery: "24h"
+        fluxcd.controlplane.io/reconcileTimeout: "5m"
 spec:
     inputsFrom:
       - kind: ResourceSetInputProvider
@@ -33,7 +39,8 @@ spec:
             name: shaman
             namespace: flux-system
         spec:
-            interval: 5m
+            interval: 24h
+            timeout: 5m
             url: https://github.com/V4ldum/is-shaman-good
             ref:
                 branch: main
@@ -49,7 +56,9 @@ spec:
             name: shaman
             namespace: flux-system
         spec:
-            interval: 5m
+            interval: 24h
+            retryInterval: 5m
+            timeout: 5m
             path: ./
             prune: true
             targetNamespace: default

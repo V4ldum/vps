@@ -5,7 +5,9 @@ metadata:
     name: backoffice
     namespace: flux-system
     annotations:
-        fluxcd.controlplane.io/reconcileEvery: "5m"
+        fluxcd.controlplane.io/reconcile: "enabled"
+        fluxcd.controlplane.io/reconcileEvery: "24h"
+        fluxcd.controlplane.io/reconcileTimeout: "5m"
 spec:
     type: OCIArtifactTag
     url: oci://ghcr.io/v4ldum/backoffice
@@ -21,6 +23,10 @@ kind: ResourceSet
 metadata:
     name: backoffice
     namespace: flux-system
+    annotations:
+        fluxcd.controlplane.io/reconcile: "enabled"
+        fluxcd.controlplane.io/reconcileEvery: "24h"
+        fluxcd.controlplane.io/reconcileTimeout: "5m"
 spec:
     inputsFrom:
       - kind: ResourceSetInputProvider
@@ -33,7 +39,6 @@ spec:
             name: backoffice
             namespace: flux-system
         spec:
-            interval: 5m
             url: https://github.com/V4ldum/backoffice
             ref:
                 branch: main
@@ -42,6 +47,8 @@ spec:
                 !/kubernetes.yml
             secretRef:
                 name: github
+            interval: 24h
+            timeout: 5m
         # Keeps the image up-to-date with the digest from RSIP
       - apiVersion: kustomize.toolkit.fluxcd.io/v1
         kind: Kustomization
@@ -49,7 +56,6 @@ spec:
             name: backoffice
             namespace: flux-system
         spec:
-            interval: 5m
             path: ./
             prune: true
             targetNamespace: default
@@ -59,3 +65,6 @@ spec:
             images:
               - name: ghcr.io/v4ldum/backoffice
                 digest: << inputs.digest | quote >>
+            interval: 24h
+            retryInterval: 5m
+            timeout: 5m

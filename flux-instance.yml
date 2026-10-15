@@ -26,6 +26,31 @@ spec:
         ref: "refs/heads/main"
         path: "./"
         pullSecret: "ghcr"
+        interval: 24h
+    kustomize:
+        patches:
+            # sync.interval only applies to the GitRepository, the generated Kustomization is hardcoded to 10m
+          - target:
+                kind: Kustomization
+                name: flux-system
+            patch: |
+                - op: replace
+                  path: /spec/interval
+                  value: 24h
+                - op: add
+                  path: /spec/retryInterval
+                  value: 5m
+                - op: add
+                  path: /spec/timeout
+                  value: 5m
+            # Aligns the timeout with the app GitRepositories (default is 60s)
+          - target:
+                kind: GitRepository
+                name: flux-system
+            patch: |
+                - op: add
+                  path: /spec/timeout
+                  value: 5m
 
 ---
 apiVersion: networking.k8s.io/v1
