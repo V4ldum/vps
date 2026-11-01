@@ -240,8 +240,6 @@ then
     k0s start
     sleep 10 # Waiting for the cluster to start
 
-    k0s kubectl apply -f cluster/traefik-system.yml
-
     if [ "$VM" -eq 0 ]
     then
         sed -i "/ExecStart=/s/\$/ --kubelet-extra-args=\"--node-ip=$NODE_IP\"/" /etc/systemd/system/k0scontroller.service
