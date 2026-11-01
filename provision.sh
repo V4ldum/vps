@@ -272,70 +272,39 @@ fi
 
 
 # ----------------------
-# FluxCD
-echo "Installing FluxCD"
+# Secrets
 
 # GitHub PAT
-GHCR_SECRET_NAME="ghcr"
-k0s kubectl get secret "$GHCR_SECRET_NAME" &>/dev/null
-GHCR_SECRET_FOUND=$?
-flux version &>/dev/null
-FLUX_INSTALLED=$?
+echo "Creating GitHub secret"
 
-if [ "$GHCR_SECRET_FOUND" -ne 0 ] || [ "$FLUX_INSTALLED" -ne 0 ]
+SECRET_NAME="ghcr"
+if ! k0s kubectl get secret "$SECRET_NAME" &>/dev/null
 then
-    echo "Creating secrets"
     read -resp "Paste the \"VPS\" token: " SECRET
 
-    if [ "$GHCR_SECRET_FOUND" -ne 0 ]
+    k0s kubectl create secret docker-registry "$SECRET_NAME" \
+        --docker-server=ghcr.io \
+        --docker-username=V4ldum \
+        --docker-password="$SECRET" >/dev/null \
+        || exit 1
+
+    # Create default SA if missing
+    if ! k0s kubectl get sa default &>/dev/null
     then
-        k0s kubectl create secret docker-registry "$GHCR_SECRET_NAME" \
-            --docker-server=ghcr.io \
-            --docker-username=V4ldum \
-            --docker-password="$SECRET" >/dev/null \
-            || exit 1
-
-        # Create default SA if missing
-        if ! k0s kubectl get sa default &>/dev/null
-        then
-            k0s kubectl create sa default >/dev/null
-        fi
-        k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$GHCR_SECRET_NAME"'"}]}' >/dev/null
+        k0s kubectl create sa default >/dev/null
     fi
-
-    if [ "$FLUX_INSTALLED" -ne 0 ]
-    then
-        echo "Installing Flux operator"
-        curl -s https://fluxcd.io/install.sh | bash >/dev/null || exit 1
-        . <(flux completion bash)
-        flux plugin install operator >/dev/null || exit 1
-
-        # Needed to pull images from GHCR
-        k0s kubectl create namespace flux-system &>/dev/null
-        k0s kubectl create secret docker-registry ghcr \
-          --namespace=flux-system \
-          --docker-server=ghcr.io \
-          --docker-username=V4ldum \
-          --docker-password="$SECRET" >/dev/null || exit 1
-
-        # Used to clone private git repositories
-        k0s kubectl create secret generic github -n flux-system \
-          --from-literal=username=V4ldum \
-          --from-literal=password="$SECRET" >/dev/null || exit 1
-
-        flux operator install -f flux-instance.yml >/dev/null || exit 1
-
-        echo "> Flux installed, deployments will now start populating"
-    else
-        echo "> Flux is already installed, skipping"
-    fi
-
+    k0s kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"'"$SECRET_NAME"'"}]}' >/dev/null
     unset SECRET
 fi
 
-
-# ----------------------
-# Secrets
+# GH Auth
+apt install -y gh &>/dev/null
+#ssh-keygen -F github.com &>/dev/null || ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+if ! gh auth status &>/dev/null
+then
+    k0s kubectl get secret ghcr -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d | jq -r '.auths[].password' \
+        | gh auth login --with-token -p ssh || exit 1
+fi
 
 # SSL certificates
 echo "Creating TLS files"
@@ -425,10 +394,74 @@ chown -R 65532:65532 ~/db
 
 
 # ----------------------
+# Deploy
+echo "Deploy applications"
+HEADER="Accept: application/vnd.github.raw"
+
 # MetalLB
-# Needs to be as late as possible to let the controller start completely
+echo "Deploying MetalLB"
 NODE_IP="$NODE_IP" envsubst '${NODE_IP}' < cluster/metallb.yml \
     | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
+
+# Dozzle
+echo "Deploying Dozzle"
+k0s kubectl apply -f dozzle.yml >/dev/null || exit 1
+sleep 5
+
+# Finance
+echo "Deploying finance"
+gh api repos/V4ldum/finance-back/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
+
+# MangaNotif
+echo "Deploying manganotif"
+gh api repos/V4ldum/manganotif-back/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
+
+# Thorfinn
+echo "Deploying thorfinn"
+gh api repos/V4ldum/thorfinn/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
+
+# Backoffice
+echo "Deploying backoffice"
+gh api repos/V4ldum/backoffice/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
+
+# Heal
+echo "Deploying heal"
+gh api repos/V4ldum/heal/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
+
+# Shaman
+echo "Deploying shaman"
+gh api repos/V4ldum/is-shaman-good/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
+
+# Bingo
+echo "Deploying bingo"
+gh api repos/V4ldum/bingo/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
+
+# Portfolio
+echo "Deploying portfolio"
+gh api repos/V4ldum/portfolio/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
+
+# QE
+echo "Deploying qe"
+gh api repos/V4ldum/qe-bleeding-edge/contents/kubernetes.yml -H "$HEADER" \
+    | k0s kubectl apply -f - >/dev/null || exit 1
+sleep 5
 
 
 # ----------------------
