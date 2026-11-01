@@ -3,4 +3,4 @@ kind: Namespace
 metadata:
     name: traefik-system
     labels:
-        name: trafik-system
+        name: traefik-system
