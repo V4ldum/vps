@@ -21,3 +21,4 @@ jobs:
         secrets: inherit
         with:
             project: dozzle
+            manifest: "dozzle.yml"
