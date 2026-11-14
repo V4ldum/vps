@@ -9,6 +9,12 @@ spec:
         address: $NODE_IP
         sans:
           - $NODE_IP
+        extraArgs:
+            oidc-issuer-url: https://token.actions.githubusercontent.com
+            oidc-client-id: vps
+            oidc-username-claim: repository
+            oidc-groups-claim: repository_owner_id
+            oidc-groups-prefix: "github:"
 
     network:
         podCIDR: fd00::/108
@@ -31,6 +37,7 @@ spec:
               - name: metallb
                 chartname: metallb/metallb
                 version: "0.15.3"
+                forceUpgrade: false
                 namespace: metallb-system
                 order: 0
                 values: |
@@ -49,6 +56,7 @@ spec:
               - name: traefik
                 chartname: traefik/traefik
                 version: "39.0.1"
+                forceUpgrade: false
                 namespace: traefik-system
                 order: 1
                 values: |
@@ -97,6 +105,12 @@ spec:
                                             stripPrefix:
                                                 prefixes:
                                                   - /api
+                                    serversTransports:
+                                        kube-api-server:
+                                            serverName: kubernetes.default.svc
+                                            rootCAs:
+                                              - /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
                                 tls:
                                     certificates:
                                       - certFile: /tls/proxy.crt

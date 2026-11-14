@@ -240,6 +240,12 @@ then
     k0s start
     sleep 10 # Waiting for the cluster to start
 
+    # GitHub Actions OIDC
+    k0s kubectl apply -f cluster/gh-actions-oidc.yml >/dev/null || exit 1
+    k0s kubectl annotate service kubernetes -n default --overwrite \
+        traefik.ingress.kubernetes.io/service.serverstransport=kube-api-server@file >/dev/null || exit 1
+
+    # extra config when running a test cluster inside a VM
     if [ "$VM" -eq 0 ]
     then
         sed -i "/ExecStart=/s/\$/ --kubelet-extra-args=\"--node-ip=$NODE_IP\"/" /etc/systemd/system/k0scontroller.service
