@@ -410,61 +410,71 @@ sleep 5
 
 # Dozzle
 echo "Deploying Dozzle"
-k0s kubectl apply -f dozzle.yml >/dev/null || exit 1
+k0s kubectl apply --server-side --prune --applyset="configmaps/dozzle-apply-set" -n default \
+    -f dozzle.yml >/dev/null || exit 1
 sleep 5
 
 # Finance
 echo "Deploying finance"
 gh api repos/V4ldum/finance-back/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
+    | k0s kubectl apply --server-side --prune --applyset="configmaps/finance-apply-set" -n default \
+      -f - >/dev/null || exit 1
 sleep 5
 
 # MangaNotif
 echo "Deploying manganotif"
 gh api repos/V4ldum/manganotif-back/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
+    | k0s kubectl apply --server-side --prune --applyset="configmaps/manganotif-apply-set" -n default \
+      -f - >/dev/null || exit 1
 sleep 5
 
 # Thorfinn
 echo "Deploying thorfinn"
 gh api repos/V4ldum/thorfinn/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
+    | k0s kubectl apply --server-side --prune --applyset="configmaps/thorfinn-apply-set" -n default \
+      -f - >/dev/null || exit 1
 sleep 5
 
 # Backoffice
 echo "Deploying backoffice"
 gh api repos/V4ldum/backoffice/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
+    | k0s kubectl apply --server-side --prune --applyset="configmaps/backoffice-apply-set" -n default \
+      -f - >/dev/null || exit 1
 sleep 5
 
 # Heal
 echo "Deploying heal"
 gh api repos/V4ldum/heal/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
+    | k0s kubectl apply --server-side --prune --applyset="configmaps/heal-apply-set" -n default \
+      -f - >/dev/null || exit 1
 sleep 5
 
 # Shaman
 echo "Deploying shaman"
 gh api repos/V4ldum/is-shaman-good/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
+    | k0s kubectl apply --server-side --prune --applyset="configmaps/shaman-apply-set" -n default \
+      -f - >/dev/null || exit 1
 sleep 5
 
 # Bingo
 echo "Deploying bingo"
 gh api repos/V4ldum/bingo/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
+    | k0s kubectl apply --server-side --prune --applyset="configmaps/bingo-apply-set" -n default \
+      -f - >/dev/null || exit 1
 sleep 5
 
 # Portfolio
 echo "Deploying portfolio"
 gh api repos/V4ldum/portfolio/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
+    | k0s kubectl apply --server-side --prune --applyset="configmaps/portfolio-apply-set" -n default \
+      -f - >/dev/null || exit 1
 sleep 5
 
 # QE
 echo "Deploying qe"
 gh api repos/V4ldum/qe-bleeding-edge/contents/kubernetes.yml -H "$HEADER" \
-    | k0s kubectl apply -f - >/dev/null || exit 1
+    | k0s kubectl apply --server-side --prune --applyset="configmaps/qe-apply-set" -n default \
+      -f - >/dev/null || exit 1
 sleep 5
 
 
