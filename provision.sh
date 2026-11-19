@@ -483,3 +483,4 @@ sleep 5
 
 apt-get autoremove --purge -y &>/dev/null
 apt-get clean -y &>/dev/null
+gh auth logout &>/dev/null
