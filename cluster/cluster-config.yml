@@ -60,6 +60,10 @@ spec:
                 namespace: traefik-system
                 order: 1
                 values: |
+                    service:
+                        spec:
+                            allocateLoadBalancerNodePorts: false
+
                     deployment:
                         minReadySeconds: 15
                         revisionHistoryLimit: 1
