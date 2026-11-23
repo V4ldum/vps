@@ -89,6 +89,13 @@ spec:
                   - name: DOZZLE_FILTER
                     value: dozzle=true
 
+                securityContext:
+                    allowPrivilegeEscalation: false
+                    runAsNonRoot: true
+                    readOnlyRootFilesystem: true
+                    capabilities:
+                        drop: ["ALL"]
+
                 startupProbe:
                     periodSeconds: 1
                     failureThreshold: 10
@@ -104,12 +111,18 @@ spec:
                 volumeMounts:
                   - name: data
                     mountPath: /data
+                  - name: tmp
+                    mountPath: /tmp
 
             volumes:
               - name: data
                 hostPath:
                     path: /root/dozzle
                     type: Directory
+              - name: tmp
+                emptyDir:
+                    medium: Memory
+                    sizeLimit: 1Mi
 
 ---
 apiVersion: v1
