@@ -40,6 +40,7 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE=a
+export KUBECTL_APPLYSET=true
 
 # cd into the script's directory
 cd "$(dirname "$0")" || exit 1
